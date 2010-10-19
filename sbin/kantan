@@ -1,0 +1,197 @@
+#!/bin/bash
+# Filename:      kantan
+# Purpose:       main interface to the kantan test suite
+# Authors:       (c) Michael Prokop <mika@grml.org>
+# Bug-Reports:   see http://grml.org/bugs/
+# License:       This file is licensed under the GPL v2 or any later version.
+################################################################################
+
+set -e
+set -u
+
+bailout() {
+  [ -n "${socat_pid:-}" ] && kill -9 "$socat_pid" &>/dev/null
+  [ -n "${http_pid_scripts:-}" ] && kill -9 "$http_pid_scripts" &>/dev/null
+  [ -n "${http_pid_debs:-}" ] && kill -9 "$http_pid_debs"  &>/dev/null
+  [ -n "${kvm_pid:-}" ]   && kill -9 "$kvm_pid"   &>/dev/null
+  [ -n "${tmpfile:-}" ]   && rm -f "$tmpfile"
+  [ -n "${1:-}" ] && exit "$1" || exit 1
+}
+
+trap bailout 1 2 3 3 6 9 14 15
+
+usage() {
+ printf "$0 - simple testing suite for FAI
+
+ Usage:
+
+   $0 server <disk.img> <grml.iso> </mnt/point/of/iso/>
+
+     or
+
+   $0 client <name> <disk.img>
+
+   $0 help   -- display usage instructions (this screen)
+   $0 server -- start main KVM instance
+   $0 client -- start client KVM instance
+
+Copyright (c) 2010, Michael Prokop <mika@grml.org>
+"
+}
+
+if [[ "${1:-}" == "help" ]] || [[ "${1:-}" == "--help" ]] || [[ -z "${1:-}" ]] ; then
+  usage
+  exit 0
+fi
+
+. /etc//kvm_server.cfg
+
+server_execution() {
+
+current_working_dir=$(pwd)
+
+if ! [ -d "${ISO_MOUNT}/boot" ] ; then
+  printf "Error: no directory /boot found on $ISO_MOUNT - forgot to mount ISO?\n"
+  exit 1
+fi
+
+KERNEL=$(find ${ISO_MOUNT}/boot -name linux26 -print0)
+INITRD=$(find ${ISO_MOUNT}/boot -name initrd.gz -print0)
+
+if [ -z "${KERNEL:-}" ] ; then
+  printf "Error: no kernel file linux26 found on mount point $ISO_MOUNT\n"
+  exit 1
+fi
+
+if [ -z "${INITRD:-}" ] ; then
+  printf "Error: no initrd file initrd.gz found on mount point $ISO_MOUNT\n"
+  exit 1
+fi
+
+printf "Starting up kvm server instance.\n"
+printf "Connect via VNC running 'vncviewer localhost'\n"
+printf "Connect via serial console running 'cu -l /dev/pts/\$ID\n"
+printf "Stop execution via entering 'quit'\n"
+
+DATA_PORT='8888'
+
+if [ -z "${SERVER_NIC_MAC:-}" ] ; then
+  # assign random NIC
+  SERVER_NIC_MAC=$(python /usr/share//scripts/random_mac.py)
+fi
+
+tmpfile=$(mktemp)
+socat -u TCP4-LISTEN:8888,reuseaddr,fork - > "${tmpfile}" &
+socat_pid="$!"
+
+printf "Serving /usr/share//scripts/ to port 8000 for netscript bootoption.\n"
+cd /usr/share//scripts/
+python -m SimpleHTTPServer 8000 &>/dev/null &
+http_pid_scripts="$!"
+
+cd "$current_working_dir"
+
+if ! [ -d "debs" ] ; then
+  printf "No directory debs/ found, will not serve local Debian packages." >&2
+else
+  cd debs
+  dpkg-scanpackages . | gzip > Packages.gz
+  python -m SimpleHTTPServer 8080 &>/dev/null &
+  http_pid_debs="$!"
+fi
+
+cd "$current_working_dir"
+
+kvm -k en-us -m "$MEMORY" -serial pty \
+    -net nic,macaddr=${SERVER_NIC_MAC},model=e1000 \
+    -net tap,ifname=${SERVER_NIC_IFACE},script=no,downscript=no \
+    -hda "$HDA" -cdrom "$ISO_FILE" -kernel "$KERNEL" -initrd "$INITRD" \
+    -append "$APPEND" -vnc :0 $KVM_ARGS &
+kvm_pid="$!"
+
+  console
+}
+
+client_execution() {
+
+  # FIXME - support configuration
+  kvm -k en-us -m 512 -net nic,macaddr=00:1d:92:ab:3f:80,model=e1000 \
+      -net tap,ifname=tap1,script=no,downscript=no \
+      -cdrom /usr/share/netboot/gpxe-1.0.1-gpxe.iso  \
+      -hda "$HDA" & # -boot d
+  kvm_pid="$!"
+
+  console
+}
+
+console() {
+sleep 2
+printf "\nEnter control command: [help|data|quit|pause|cont]\nprompt\$ "
+
+while read s ; do
+  printf 'prompt$ '
+  case "$s" in
+    help)
+       printf "
+ Usage instructions:
+
+  quit  Cancel execution of KVM and immediately exit .
+  pause Interrupt KVM process for later resuming using 'cont'.
+  cont  Continue execution of paused KVM process.
+  data  Display data that has been received from KVM server instance.\n"
+
+       printf 'prompt$ '
+       ;;
+    data)
+       if [ -r "${tmpfile:-}" ] ; then
+         printf "Data from kvm server:\n"
+         cat "$tmpfile"
+         printf 'prompt$ '
+       else
+         printf "No data from KVM server yet.\n"
+         printf 'prompt$ '
+       fi
+       ;;
+    pause)
+       printf "Pausing KVM process (use 'cont' to continue execution)\n"
+       kill -s STOP $kvm_pid
+       printf 'prompt$ '
+       ;;
+    cont)
+       printf "Continuing KVM process (use 'pause' to pause execution again)\n"
+       kill -s CONT $kvm_pid
+       printf 'prompt$ '
+       ;;
+    exit|quit)
+       bailout 0
+       ;;
+  esac
+done
+}
+
+HDA="${2:-}"
+
+if [[ "${1:-}" == "server" ]] ; then
+  if [[ -z "${4:-}" ]] ; then
+    usage
+    exit 1
+  fi
+  ISO_FILE="${3:-}"
+  ISO_MOUNT="${4:-}"
+  server_execution
+elif [[ "${1:-}" == "client" ]] ; then
+  if [[ -z "${3:-}" ]] ; then
+    usage
+    exit 1
+  fi
+  CLIENTNAME="${2:-}"
+  client_execution
+else
+  printf "Unsupported argument ${1} - exiting.\n"
+  usage
+  exit 1
+fi
+
+bailout 0
+
+## END OF FILE #################################################################

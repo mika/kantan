@@ -1,0 +1,24 @@
+<!--
+Revision file for kantan
+-->
+
+<authorgroup>
+  <author>
+    <firstname>Michael</firstname>
+    <surname>Prokop</surname>
+    <affiliation>
+      <orgname>Grml Solutions</orgname>
+    </affiliation>
+  </author>
+</authorgroup>
+
+<revhistory>
+
+  <revision>
+    <revnumber>0.1</revnumber>
+    <date>2010-10-19</date>
+    <authorinitials>MP</authorinitials>
+    <revremark>Initial document version.</revremark>
+  </revision>
+
+</revhistory>

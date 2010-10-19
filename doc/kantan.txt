@@ -1,0 +1,241 @@
+kantan(8)
+=========
+
+Name
+----
+
+Kantan - simple test suite for autotesting software using Grml and KVM
+
+Synopsis
+--------
+
+For the server (main) instance:
+
+  kantan server <disk.img> <grml.iso> </mnt/point/of/iso/>
+
+or for client(s):
+
+  kantan client <name> <disk.img>
+
+[[description]]
+Description
+-----------
+
+Kantan is a set of scripts to automatically test software using KVM
+(http://www.linux-kvm.org/) and the Debian based Linux live system Grml
+(http://grml.org/).  It was originally developed to provide a simple way for
+autotesting specific versions of FAI (http://fai-project.org/) but is expected
+to provide a simple-to-use test suite for autotesting any Linux based software.
+
+The concept of Kantan is to boot one virtual machine (the main instance, 'kantan
+server ...') which is supposed to be able to serve as installation server for
+further virtual machines if needed. This concept for example allows to
+automatically set up a link:http://fai-project.org/[FAI] server which then
+deploys further started virtual machines (the clients, 'kantan client ...').
+
+Kantan is meant to be a prototype implementation to show how automated testing
+could be realised. In the long run the author would like to get a suite to
+automatically test:
+
+* complete Debian installations
+
+* testing Debian packages within current state of Debian suites
+
+* software configurations that are required to run on more than one host
+(installation procedures with dependencies between different systems during
+installation, cluster + HA setups,...)
+
+* live systems with their flexible boot options, specific features and services
+
+* kernel versions
+
+* software packages that provide unit tests
+
+* low-level tools like partitioning, LVM, mdadm,...
+
+* filesystems (crash, repair, mount,...)
+
+[CAUTION]
+This software is WIP, though released in an early stage to gain feedback,
+testers and developers. It's a prototype implementation mainly in shellscript
+but is expected to be rewritten in a real scripting language like python.
+
+[[setup]]
+Setup
+-----
+
+What you need to be able to use Kantan:
+
+* a Debian (based) system (any other Linux system might do it as well, but
+  the scripts and docs are optimised for Debian (based) systems for now)
+
+* a system running i386 or amd64 architecture (to smoothely use KVM with Grml)
+
+* at least 2GB of RAM are recommended
+
+* at least 4GB of harddisk space for >=2 virtual disk images
+
+* a Grml ISO (see instructions below)
+
+* a network bridge with a DHCP server and dnsmasq listening on it (see
+instructions for setup as follows)
+
+As network configuration Kantan assumes you've a working bridge setup with
+interface _vnet_ using two tap devices _tap0_ (for the kantan server) and _tap1_
+(and optionally further tap devices - all of them for the kantan clients).
+Configuration example for /etc/network/interfaces (replace $USER with _your_
+username under which you want to execute the kantan script then):
+
+  # example config for /etc/network/interfaces
+  iface vnet inet static
+        post-up tunctl -u $USER -g $USER -t tap0 ; brctl addif vnet tap0 ; ip link set up dev tap0
+        post-up tunctl -u $USER -g $USER -t tap1 ; brctl addif vnet tap1 ; ip link set up dev tap1
+        pre-down ip link set down dev tap0 ; tunctl -d tap0
+        pre-down ip link set down dev tap1 ; tunctl -d tap1
+        bridge_ports none
+        address 192.168.10.1
+        netmask 255.255.255.0
+
+Install dnsmasq to forward DNS requests from KVM guests to physical net:
+
+  # apt-get install dnsmasq
+
+The relevant dhcpd configuration to serve the FAI server VM with a IPv4
+configuration but ignore some further client machines that will be booted via
+PXE (kantan client) later on:
+
+  # tail /etc/dhcp3/dhcpd.conf
+  subnet 192.168.10.0 netmask 255.255.255.0 {
+    range 192.168.10.50 192.168.10.200;
+    option routers 192.168.10.1;
+    option domain-name-servers 192.168.10.1;
+    next-server 192.168.10.1;
+    filename "pxelinux.0";
+  }
+  host ignore0 {hardware ethernet 00:1d:92:ab:3f:80;ignore booting;}
+  host ignore1 {hardware ethernet 00:1d:92:ab:3f:81;ignore booting;}
+  host ignore2 {hardware ethernet 00:1d:92:ab:3f:82;ignore booting;}
+
+/////////////////////////////////////////////////////////////////////////
+# for users of Grml it's even simplier :)
+auto vnet
+iface vnet inet static
+      post-up  /usr/sbin/grml-vnet -u $USER -b vnet    tap0 tap1 tap2 tap3
+      pre-down /usr/sbin/grml-vnet -u $USER -b vnet -d tap0 tap1 tap2 tap3
+      bridge_ports none
+      address 192.168.10.1
+      netmask 255.255.255.0
+/////////////////////////////////////////////////////////////////////////
+
+Make sure the network interfaces inside the VM's have access to the internet
+then:
+
+  # ifup vnet
+  # echo 1 > /proc/sys/net/ipv4/ip_forward
+  # iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+Install the kantan Debian package, which for now is available from
+http://people.debian.org/~mika/kantan/
+
+Grab a Grml ISO and mount it somewhere:
+
+  % wget download.grml.org/grml64-medium_2010.04.iso
+  % wget download.grml.org/grml64-medium_2010.04.iso.md5
+  % md5sum -c grml64-medium_2010.04.iso.md5
+  # mount -o loop grml64-medium_2010.04.iso /mnt/test
+
+If necessary adjust /etc/kantan/kvm-server.cfg according to your needs.
+
+Create an image file for use as /srv within the FAI server (qemu-img is
+available from qemu-utils):
+
+  % qemu-img create empty.img 3G
+
+If you want to provide any local Debian packages to the FAI server instance just
+create the directory _debs_ in the current working directory (being the one
+where you'll invoke kantan then), like for example:
+
+  % mkdir debs
+  % dget -u -d http://fai-project.org/download/experimental/fai_4.0~beta2+experimental36_amd64.changes
+  % mv -i *.deb debs/
+
+Finally execute the kantan script as $USER for the server instance, providing
+the path to the generated image file and the mountpoint where the Grml ISO is
+mounted on:
+
+  % kantan server empty.img grml64-medium_2010.04.iso /mnt/test
+
+Finally start the FAI client instances (the ones that should be installed by the
+kantan server VM):
+
+  % qemu-img create fai-client.img 2G
+  % kantan client fai-client.img
+
+That's it. Further usage scenarious and tests will come up. Please provide
+feedback to the author.
+
+[[faq]]
+FAQ
+---
+
+[[what_does_kantan_mean]]
+What does Kantan mean?
+~~~~~~~~~~~~~~~~~~~~~~
+
+The author of Kantan is a friend of the
+link:http://en.wikipedia.org/wiki/Kanban[Kanban] concept and created the word
+Kantan based on "the Kanban of testing".  Amusingly according to
+http://www.cjvlang.com/Writing/writjpn/signs/kantan.html "Kantan is a
+Chinese-style compound (on-reading) meaning 'simple'." which represents the idea
+of Kantan: provide a _simple_ method for testing software.
+
+[[kantan_vs_chroot]]
+Why use a VM and not just a chroot?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Whereas chroots provide a nice way for testing for example package installations
+they are limited to some restricted actions. Chroots don't properly support
+testing kernel versions, bootoptions, partitioning tools, LVM, mdadm,... in a
+reasonable environment. The author of Kantan thinks that lack of proper Q/A is
+one of the most annoying issues in the open source world, so let's do something
+against that.
+
+[[todos]]
+TODOs
+-----
+
+Known todos
+~~~~~~~~~~~
+
+* make it more configurable/flexible, especially WRT network setup
+* better logging and data sharing support to collect data and status report
+  and control data flow between different virtual machines
+* make sure vnc and serial console display the same things during
+  execution within Grml
+* netscript.sh:
+  - add support for atftpd instead of tftpd-hpa
+  - support svn/git/... config space retrieval
+  - improve arch and suite support through base.tgz
+
+Checkout
+~~~~~~~~
+
+* use kvm's monitor support for sharing/controlling data?
+* try decreasing memory usage by installing FAI server completly
+  to harddisk instead of live environment by using fai-setup-storage
+  at an early stage to install FAI to a chroot/system on disk
+* investigate and combine/merge features/ideas/approaches from:
+  - http://git.grml.org/?p=grml-unittests.git;a=summary
+  - http://kvm.et.redhat.com/page/KVM-Autotest
+  - https://wiki.ubuntu.com/AutomatedTesting
+  - https://wiki.ubuntu.com/AutomatedTestingDeployment
+  - https://wiki.edubuntu.org/VirtFeatureVerification
+
+[[author]]
+Author
+------
+Michael Prokop <mika@grml.org>
+
+/////////////////////////////////////
+// vim:ai tw=80 ft=asciidoc expandtab
+/////////////////////////////////////

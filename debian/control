@@ -1,0 +1,18 @@
+Source: kantan
+Section: admin
+Priority: optional
+Maintainer: Michael Prokop <mika@grml.org>
+Build-Depends: debhelper (>= 5)
+Build-Depends-Indep: asciidoc, xsltproc, docbook-xsl
+Standards-Version: 3.9.1
+Homepage: http://grml.org/kantan/
+Vcs-git: git://git.grml.org/kantan.git
+Vcs-Browser: http://git.grml.org/?p=kantan.git
+
+Package: kantan
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}, socat, qemu-kvm | kvm
+Suggests: qemu-utils
+Description: simple test suite for autotesting using Grml and KVM
+ kantan is a test suite for automatically testing software
+ using KVM and the Grml linux live system (http://grml.org/).
