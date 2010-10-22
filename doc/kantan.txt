@@ -15,7 +15,7 @@ For the server (main) instance:
 
 or for client(s):
 
-  kantan client <name> <disk.img>
+  kantan client <disk.img> <name>
 
 [[description]]
 Description
@@ -77,6 +77,7 @@ What you need to be able to use Kantan:
 
 * a Grml ISO (see instructions below)
 
+/////////////////////////////////////////////////////////////////////////
 * a network bridge with a DHCP server and dnsmasq listening on it (see
 instructions for setup as follows)
 
@@ -116,7 +117,6 @@ PXE (kantan client) later on:
   host ignore1 {hardware ethernet 00:1d:92:ab:3f:81;ignore booting;}
   host ignore2 {hardware ethernet 00:1d:92:ab:3f:82;ignore booting;}
 
-/////////////////////////////////////////////////////////////////////////
 # for users of Grml it's even simplier :)
 auto vnet
 iface vnet inet static
@@ -125,12 +125,13 @@ iface vnet inet static
       bridge_ports none
       address 192.168.10.1
       netmask 255.255.255.0
+
+# ifup vnet
 /////////////////////////////////////////////////////////////////////////
 
 Make sure the network interfaces inside the VM's have access to the internet
 then:
 
-  # ifup vnet
   # echo 1 > /proc/sys/net/ipv4/ip_forward
   # iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 
@@ -168,7 +169,7 @@ mounted on:
 Finally start the FAI client instances (the ones that should be installed by the
 kantan server VM):
 
-  % qemu-img create fai-client.img 2G
+  % qemu-img create fai-client.img 3G
   % kantan client fai-client.img
 
 That's it. Further usage scenarious and tests will come up. Please provide
@@ -208,10 +209,6 @@ Known todos
 ~~~~~~~~~~~
 
 * make it more configurable/flexible, especially WRT network setup
-////////////////////////////////////////////////////////////////////////////////
-vde_switch -d -s /tmp/vde_terminalserver
-kvm -net nic,macaddr=$(random-mac.py) -net vde,sock=/tmp/vde_terminalserver
-////////////////////////////////////////////////////////////////////////////////
 
 * better logging and data sharing support to collect data and status report
   and control data flow between different virtual machines

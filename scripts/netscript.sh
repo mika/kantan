@@ -63,7 +63,7 @@ software_install() {
     --no-install-recommends install \
     fai-client fai-doc fai-quickstart fai-server fai-setup-storage \
     isc-dhcp-server portmap nfs-kernel-server tftpd-hpa \
-    imvirt
+    imvirt dnsmasq
 
   # dhcp3-server -> /etc/dhcp3 vs. /etc/dhcp
 }
@@ -83,11 +83,11 @@ dhcpd_conf() {
   if ! grep -q '^# FAI deployment script' /etc/dhcp/dhcpd.conf ; then
     cat >> /etc/dhcp/dhcpd.conf << EOF
 # FAI deployment script
-subnet $NETWORK.0 netmask 255.255.255.0 {
-  range $NETWORK.50 $NETWORK.200;
-  option routers $NETWORK.1;
-  option domain-name-servers $NETWORK.1;
-  next-server $NETWORK.2;
+subnet 192.168.10.0 netmask 255.255.255.0 {
+  range 192.168.10.50 192.168.10.200;
+  option routers 192.168.10.1;
+  option domain-name-servers 192.168.10.1;
+  next-server 192.168.10.1;
   filename "pxelinux.0";
 }
 EOF
@@ -98,6 +98,10 @@ EOF
 # FAI deployment script - ${DEMOHOST}
 host ${DEMOHOST} {hardware ethernet 00:1d:92:ab:3f:80;fixed-address ${DEMOHOST};}
 EOF
+  fi
+
+  if [ -r /etc/default/isc-dhcp-server ] ; then
+    sed -i 's/INTERFACES=.*/INTERFACES="eth1"/' /etc/default/isc-dhcp-server
   fi
 }
 
@@ -136,16 +140,20 @@ network_conf() {
 iface lo inet loopback
 auto lo
 
-auto eth0
-iface eth0 inet static
-  address $NETWORK.2
+auto eth1
+iface eth1 inet static
+  address 192.168.10.1
   netmask 255.255.255.0
-  gateway $NETWORK.1
+# gateway 192.168.10.1
 EOF
   fi
 
-  kill -9 $(pidof pump &>/dev/null) $(pidof dhclient &>/dev/null) 2>/dev/null || true
+  # kill -9 $(pidof pump &>/dev/null) $(pidof dhclient &>/dev/null) 2>/dev/null || true
   /etc/init.d/networking restart
+
+  echo 1 > /proc/sys/net/ipv4/ip_forward
+  iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
 }
 
 hosts_conf() {
@@ -153,8 +161,8 @@ hosts_conf() {
   if ! grep -q '^# FAI deployment script' /etc/hosts ; then
     cat >> /etc/hosts << EOF
 # FAI deployment script
-$NETWORK.2  $HOST
-$NETWORK.50 ${DEMOHOST}
+192.168.10.1  ${HOST}
+192.168.10.50 ${DEMOHOST}
 EOF
   fi
 }
@@ -189,8 +197,8 @@ nfs_setup() {
   if ! grep -q '^/srv' /etc/exports ; then
     cat >> /etc/exports << EOF
 # FAI deployment script
-/srv/fai/config ${NETWORK}.2/24(async,ro,no_subtree_check)
-/srv/fai/nfsroot ${NETWORK}.2/24(async,ro,no_subtree_check,no_root_squash)
+/srv/fai/config 192.168.10.1/24(async,ro,no_subtree_check)
+/srv/fai/nfsroot 192.168.10.1/24(async,ro,no_subtree_check,no_root_squash)
 EOF
     /etc/init.d/nfs-kernel-server restart
   fi
@@ -256,12 +264,12 @@ EOT
 fai_setup() {
   # if testing FAI 4.x do not use existing base.tgz
   FAI_VERSION=$(dpkg --list fai-server | awk '/^ii/ {print $3}')
-  if dpkg --compare-versions $FAI_VERSION gt 3.4 ; then
-    echo "Not installing base.tgz, as version of FAI greater than 3.4."
+  if dpkg --compare-versions $FAI_VERSION gt 3.5 ; then
+    echo "Not installing base.tgz, as version of FAI greater than 3.5."
   else
     # download base.tgz to save time...
     # TODO: support different archs, detect etch/lenny/....
-    if wget ${NETWORK}.1:8000/base.tgz ; then
+    if wget 10.0.2.2:8000/base.tgz ; then
       [ -d /srv/fai/config/basefiles/ ] || mkdir /srv/fai/config/basefiles/
       mv base.tgz /srv/fai/config/basefiles/FAIBASE.tgz
     fi
@@ -275,6 +283,10 @@ fai_setup() {
       fai-setup -v | tee /tmp/fai-setup.log
     fi
   fi
+
+  if ! [ -e /srv/tftp/fai/pxelinux.cfg/default ] ; then
+    ln -s $(find /srv/tftp/fai/pxelinux.cfg/ -type f -print0 | head -1) /srv/tftp/fai/pxelinux.cfg/default
+  fi
 }
 
 adjust_services() {
@@ -284,15 +296,19 @@ adjust_services() {
   /etc/init.d/nfs-common restart
   /etc/init.d/nfs-kernel-server restart || true
 
+  if [ -x /etc/init.d/dnsmasq ] ; then
+    /etc/init.d/dnsmasq restart
+  fi
+
   # inetutils-inetd might not be present
-  if [ -r /etc/init.d/inetutils-inetd ] ; then
+  if [ -x /etc/init.d/inetutils-inetd ] ; then
     /etc/init.d/inetutils-inetd stop || true
     rm -f /etc/rc2.d/S20inetutils-inetd
   fi
 
   /etc/init.d/tftpd-hpa restart
-  
-  if [ -r /etc/init.d/dhcp3-server ] ; then
+
+  if [ -x /etc/init.d/dhcp3-server ] ; then
     /etc/init.d/dhcp3-server restart
   else
     /etc/init.d/isc-dhcp-server restart
@@ -334,12 +350,11 @@ fi
 #) 2>&1 | tee "$myname".errors >&2) 3>&1 | tee "$myname".log
 #rc=$(cat "$myname".rc 2>/dev/null)
 #rm -f "$myname".rc
-if [ -z "$NETWORK" ] ; then
-  printf "Error: \$NETWORK is not set, can not send data to server.\n">&2
-else
-  echo "status report from $(date)" | telnet ${NETWORK}.1 8888
-  echo "rc=$rc" | telnet ${NETWORK}.1 8888
-fi
+
+echo "status report from $(date)" | telnet 10.0.2.2 8888
+echo "rc=$rc" | telnet 10.0.2.2 8888
+echo "done" | telnet 10.0.2.2 8888
+
 #exit $rc
 
 ## END OF FILE #################################################################
