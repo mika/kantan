@@ -4,7 +4,7 @@ kantan(8)
 Name
 ----
 
-Kantan - simple test suite for autotesting software using Grml and KVM
+kantan - simple test suite for autotesting software using Grml and KVM
 
 Synopsis
 --------
@@ -208,28 +208,55 @@ Known todos
 ~~~~~~~~~~~
 
 * make it more configurable/flexible, especially WRT network setup
+////////////////////////////////////////////////////////////////////////////////
+vde_switch -d -s /tmp/vde_terminalserver
+kvm -net nic,macaddr=$(random-mac.py) -net vde,sock=/tmp/vde_terminalserver
+////////////////////////////////////////////////////////////////////////////////
+
 * better logging and data sharing support to collect data and status report
   and control data flow between different virtual machines
+
 * make sure vnc and serial console display the same things during
   execution within Grml
+
 * netscript.sh:
   - add support for atftpd instead of tftpd-hpa
   - support svn/git/... config space retrieval
   - improve arch and suite support through base.tgz
 
+[[bugs]]
+Bugs
+----
+Sure. We need a test suite for Kantan to test it. Wait...
+
 Checkout
 ~~~~~~~~
 
 * use kvm's monitor support for sharing/controlling data?
+
 * try decreasing memory usage by installing FAI server completly
   to harddisk instead of live environment by using fai-setup-storage
   at an early stage to install FAI to a chroot/system on disk
+
 * investigate and combine/merge features/ideas/approaches from:
-  - http://git.grml.org/?p=grml-unittests.git;a=summary
   - http://kvm.et.redhat.com/page/KVM-Autotest
+  - http://lizards.opensuse.org/2010/05/25/automated-opensuse-testing/
+  - http://git.grml.org/?p=grml-unittests.git;a=summary
+  - http://www.mozilla.org/projects/testopia/
   - https://wiki.ubuntu.com/AutomatedTesting
   - https://wiki.ubuntu.com/AutomatedTestingDeployment
   - https://wiki.edubuntu.org/VirtFeatureVerification
+  - http://groups.csail.mit.edu/uid/sikuli/
+  - http://en.wikipedia.org/wiki/List_of_GUI_testing_tools
+  - http://seleniumhq.org/
+  - http://ldtp.freedesktop.org/wiki/
+
+//////////////////////////////////////////////////
+Literature:
+
+- http://en.wikipedia.org/wiki/Test_automation
+- Several books under review..
+//////////////////////////////////////////////////
 
 [[author]]
 Author
