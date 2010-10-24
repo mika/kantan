@@ -1,11 +1,13 @@
 kantan(8)
 =========
 
+[[name]]
 Name
 ----
 
 kantan - simple test suite for autotesting software using Grml and KVM
 
+[[synopsis]]
 Synopsis
 --------
 
@@ -15,7 +17,35 @@ For the server (main) instance:
 
 or for client(s):
 
-  kantan client <disk.img> <name>
+  kantan client <disk.img> <name> [kvm_arguments]
+
+[[options]]
+Options
+-------
+
+Options for _kantan server_:
+
+ <disk.img> <grml.iso> </mnt/point/of/iso/>
+
+where _disk.img_ is an existing image file (created e.g. via 'qemu-img create
+disk.img 3G'), grml.iso is an a Grml ISO (http://grml.org/) and
+/mnt/point/of/iso/ refers to the mount point where the specified Grml ISO is
+mounted to (e.g. 'mount -o loop grml-medium_sid_latest.iso /mnt/test').
+
+Options for _kantan client_:
+
+ <disk.img> <name> [kvm_arguments]
+
+where _disk.img_ is an existing image file (created e.g. via 'qemu-img create
+disk.img 3G'), _name_ assigns the virtual instance a name (for reading
+/etc/kantan/name.cfg iff the file exists). The _kvm_arguments_ are optional and
+can be used to add additional arguments to the KVM commandline, like '-boot d'
+for booting from the ISO.
+
+ Usage example:
+
+ kantan server /tmp/empty.img /tmp/grml-medium_sid_latest.iso /mnt/test
+ kantan client /tmp/fai_testclient.img grml "-boot d"
 
 [[description]]
 Description
@@ -208,8 +238,6 @@ TODOs
 Known todos
 ~~~~~~~~~~~
 
-* make it more configurable/flexible, especially WRT network setup
-
 * better logging and data sharing support to collect data and status report
   and control data flow between different virtual machines
 
@@ -217,14 +245,13 @@ Known todos
   execution within Grml
 
 * netscript.sh:
-  - add support for atftpd instead of tftpd-hpa
   - support svn/git/... config space retrieval
   - improve arch and suite support through base.tgz
 
 [[bugs]]
 Bugs
 ----
-Sure. We need a test suite for Kantan to test it. Wait...
+Probably. We just need a test suite for Kantan for testing.
 
 Checkout
 ~~~~~~~~

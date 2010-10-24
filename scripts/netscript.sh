@@ -17,6 +17,9 @@
 # the real script
 
 # helper stuff {{{
+
+# be careful, we want to be aware of any errors
+# we don't cover yet...
 set -e
 
 HOST=$(hostname)
@@ -61,24 +64,24 @@ software_install() {
   APT_LISTCHANGES_FRONTEND=none APT_LISTBUGS_FRONTEND=none \
     DEBIAN_FRONTEND=noninteractive apt-get -y --force-yes \
     --no-install-recommends install \
-    fai-client fai-doc fai-quickstart fai-server fai-setup-storage \
-    isc-dhcp-server portmap nfs-kernel-server tftpd-hpa \
-    imvirt dnsmasq
-
-  # dhcp3-server -> /etc/dhcp3 vs. /etc/dhcp
+    fai-client fai-doc fai-server fai-setup-storage \
+    atftpd dnsmasq imvirt isc-dhcp-server nfs-kernel-server portmap
 }
 
 prechecks() {
   # this is WFM, but makes sure the script is executed under KVM only
-  if [[ "$(imvirt)" == "KVM" ]] ; then
-    log "Running inside KVM, will continue..."
+  if [[ "$(imvirt)" == "KVM" ]] || grep 'model name' /proc/cpuinfo | grep -q 'QEMU' ; then
+    log "Running inside KVM/QEMU, will continue..."
   else
-    error "Not running inside KVM as expected, will not continue."
+    error "Not running inside KVM/QEMU as expected, will not continue."
     exit 1
   fi
 }
 
 dhcpd_conf() {
+  # note:
+  # dhcp3-server    == /etc/dhcp3/
+  # isc-dhcp-server == /etc/dhcp/
   log "Adjusting dhcpd configuration"
   if ! grep -q '^# FAI deployment script' /etc/dhcp/dhcpd.conf ; then
     cat >> /etc/dhcp/dhcpd.conf << EOF
@@ -93,21 +96,12 @@ subnet 192.168.10.0 netmask 255.255.255.0 {
 EOF
   fi
 
-  if ! grep -q "^# FAI deployment script - ${DEMOHOST}" /etc/dhcp/dhcpd.conf ; then
-    cat >> /etc/dhcp/dhcpd.conf << EOF
-# FAI deployment script - ${DEMOHOST}
-host ${DEMOHOST} {hardware ethernet 00:1d:92:ab:3f:80;fixed-address ${DEMOHOST};}
-EOF
-  fi
-
   if [ -r /etc/default/isc-dhcp-server ] ; then
     sed -i 's/INTERFACES=.*/INTERFACES="eth1"/' /etc/default/isc-dhcp-server
   fi
 }
 
-tftpd_conf() {
-  log "Adjusting tftpd configuration"
-
+tftpd_hpda_conf() {
   if grep -q '^# FAI deployment script' /etc/default/tftpd-hpa ; then
     return 0
   fi
@@ -132,6 +126,31 @@ EOF
   fi
 }
 
+atftpd_conf() {
+ if grep -q '^# FAI deployment script' /etc/default/atftpd ; then
+   return 0
+ fi
+
+ cat > /etc/default/atftpd << EOF
+# FAI deployment script
+USE_INETD=false
+OPTIONS="--daemon --no-multicast --bind-address 192.168.10.1 /srv/tftp/fai"
+EOF
+}
+
+tftpd_conf() {
+  log "Adjusting tftpd configuration"
+
+  if [ -r /etc/default/tftpd-hpa ] ; then
+    tftpd_hpda_conf
+  elif [ -r /etc/default/atftpd ] ; then
+    atftpd_conf
+  else
+    printf "No supported (atftpd/tftpd-hpa) tftpd found.\n" >&2
+    exit 1
+  fi
+}
+
 network_conf() {
   log "Adjusting network configuration"
   if ! grep -q '^# FAI deployment script' /etc/network/interfaces ; then
@@ -148,12 +167,10 @@ iface eth1 inet static
 EOF
   fi
 
-  # kill -9 $(pidof pump &>/dev/null) $(pidof dhclient &>/dev/null) 2>/dev/null || true
   /etc/init.d/networking restart
 
   echo 1 > /proc/sys/net/ipv4/ip_forward
   iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-
 }
 
 hosts_conf() {
@@ -162,7 +179,6 @@ hosts_conf() {
     cat >> /etc/hosts << EOF
 # FAI deployment script
 192.168.10.1  ${HOST}
-192.168.10.50 ${DEMOHOST}
 EOF
   fi
 }
@@ -284,9 +300,8 @@ fai_setup() {
     fi
   fi
 
-  if ! [ -e /srv/tftp/fai/pxelinux.cfg/default ] ; then
-    ln -s $(find /srv/tftp/fai/pxelinux.cfg/ -type f -print0 | head -1) /srv/tftp/fai/pxelinux.cfg/default
-  fi
+  log "Executing fai-chboot for default host"
+  fai-chboot -IFv default
 }
 
 adjust_services() {
@@ -300,13 +315,18 @@ adjust_services() {
     /etc/init.d/dnsmasq restart
   fi
 
-  # inetutils-inetd might not be present
+  # we want to use tftpd-hpa/atftpd standalone,
+  # to avoid conflicts because of already-running
+  # services lets stop the inetutils-inetd stuff instead
   if [ -x /etc/init.d/inetutils-inetd ] ; then
     /etc/init.d/inetutils-inetd stop || true
-    rm -f /etc/rc2.d/S20inetutils-inetd
   fi
 
-  /etc/init.d/tftpd-hpa restart
+  if [ -x /etc/init.d/tftpd-hpa ] ; then
+    /etc/init.d/tftpd-hpa restart
+  else
+    /etc/init.d/atftpd restart
+  fi
 
   if [ -x /etc/init.d/dhcp3-server ] ; then
     /etc/init.d/dhcp3-server restart
@@ -314,12 +334,6 @@ adjust_services() {
     /etc/init.d/isc-dhcp-server restart
   fi
 }
-
-demohost() {
-  log "Executing fai-chboot for $DEMOHOST"
-  fai-chboot -IFv "${DEMOHOST}"
-}
-# }}}
 
 # main execution itself {{{
 
@@ -336,7 +350,6 @@ main() {
   nfs_setup
   fai_setup
   adjust_services
-  demohost
 }
 
 # if executed via netscript bootoption
