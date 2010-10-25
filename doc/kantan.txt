@@ -239,6 +239,9 @@ reasonable environment.
 TODOs
 -----
 
+Known todos
+~~~~~~~~~~~
+
 * provide test features and tests from
   link:http://git.grml.org/?p=grml-unittests.git;a=summary[grml-unittests]
 
@@ -252,19 +255,9 @@ TODOs
   - support svn/git/... config space retrieval
   - improve arch and suite support through base.tgz
 
-[[bugs]]
-Bugs
-----
-Probably. We just need a test suite for Kantan for testing.
-
 Checkout
 ~~~~~~~~
-
 * use kvm's monitor support for sharing/controlling data?
-
-* try decreasing memory usage by installing FAI server completly
-  to harddisk instead of live environment by using fai-setup-storage
-  at an early stage to install FAI to a chroot/system on disk
 
 * investigate and combine/merge features/ideas/approaches from:
   - http://kvm.et.redhat.com/page/KVM-Autotest
@@ -285,6 +278,11 @@ Literature:
 - http://en.wikipedia.org/wiki/Test_automation
 - Several books under review..
 //////////////////////////////////////////////////
+
+[[bugs]]
+Bugs
+----
+Probably. We just need a test suite for Kantan for testing.
 
 [[author]]
 Author
