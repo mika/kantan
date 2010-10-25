@@ -272,6 +272,7 @@ Checkout
   - http://en.wikipedia.org/wiki/List_of_GUI_testing_tools
   - http://seleniumhq.org/
   - http://ldtp.freedesktop.org/wiki/
+  - http://hoopajoo.net/projects/xautomation.html
 
 //////////////////////////////////////////////////
 Literature:
