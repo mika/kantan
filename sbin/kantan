@@ -49,10 +49,10 @@ fi
 
 VDE_SWITCH='/tmp/kantan_share/vde_switch'
 
-. /etc/kantan/kvm_server.cfg
-
 # server handling
 server_execution() {
+  . /etc/kantan/server.cfg
+
   current_working_dir=$(pwd)
 
   if ! [ -d "${ISO_MOUNT}/boot" ] ; then
@@ -124,7 +124,7 @@ client_execution() {
       printf "Reading configuration file /etc/kantan/${CLIENTNAME}.cfg\n"
       . "/etc/kantan/${CLIENTNAME}.cfg"
     else
-      printf "File /etc/kantan/${CLIENTNAME}.cfg not found, using defaults."
+      printf "Configuration file /etc/kantan/${CLIENTNAME}.cfg not found, using defaults.\n"
     fi
   fi
 
@@ -136,10 +136,10 @@ client_execution() {
 
   # defaults if unset
   [ -z "${CLIENT_ISO:-}" ] && CLIENT_ISO='/usr/share/kantan/netboot/gpxe-1.0.1-gpxe.iso'
-  [ -z "${MEMORY:-}" ] && MEMORY=512
+  [ -z "${CLIENT_MEMORY:-}" ] && CLIENT_MEMORY=512
 
   if [ -z "${KVM_CMDLINE:-}" ] ; then
-    KVM_CMDLINE="kvm -k en-us -m ${MEMORY} \
+    KVM_CMDLINE="kvm -k en-us -m ${CLIENT_MEMORY} \
 -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),model=e1000,vlan=1 \
 -net vde,sock=${VDE_SWITCH},vlan=1 \
 -cdrom ${CLIENT_ISO} -hda ${HDA} ${CLIENT_ARGS:-}" # -boot once=d
