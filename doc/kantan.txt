@@ -254,6 +254,7 @@ Known todos
 * netscript.sh:
   - support svn/git/... config space retrieval
   - improve arch and suite support through base.tgz
+  - support canceling the script and getting a debugshell
 
 Checkout
 ~~~~~~~~

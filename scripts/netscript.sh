@@ -201,12 +201,16 @@ $FAI_MIRROR
 EOF
   fi
 
-  if ! grep -q '^# FAI deployment script' /etc/fai/fai.conf ; then
-    cat >> /etc/fai/fai.conf << EOF
-# FAI deployment script
-FAI_CONFIG_SRC="nfs://$HOST/srv/fai/config"
-EOF
+  if [ -z "${FAI_CONFIG_SRC:-}" ] ; then
+    FAI_VERSION=$(dpkg --list fai-server | awk '/^ii/ {print $3}')
+    if dpkg --compare-versions $FAI_VERSION gt 3.5 ; then
+      FAI_CONFIG_SRC=svn://svn.debian.org/svn/fai/trunk/examples/simple/
+    else
+      FAI_CONFIG_SRC=svn://svn.debian.org/svn/fai/branches/stable/3.4/examples/simple/
+    fi
   fi
+
+  sed -i "s;^FAI_CONFIG_SRC=.*;FAI_CONFIG_SRC=\"$FAI_CONFIG_SRC\";" /etc/fai/fai.conf
 }
 
 nfs_setup() {
@@ -367,9 +371,8 @@ fi
 #rc=$(cat "$myname".rc 2>/dev/null)
 #rm -f "$myname".rc
 
-echo "status report from $(date)" | telnet 10.0.2.2 8888
-echo "rc=$rc" | telnet 10.0.2.2 8888
-echo "done" | telnet 10.0.2.2 8888
+echo "status report from $(date)
+rc=$rc" | telnet 10.0.2.2 8888
 
 #exit $rc
 
