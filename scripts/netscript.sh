@@ -59,13 +59,16 @@ software_install() {
     fi
   fi
 
+  if [ -z "$PACKAGES" ] ; then
+    PACKAGES="fai-client fai-doc fai-server fai-setup-storage \
+atftpd dnsmasq imvirt isc-dhcp-server nfs-kernel-server portmap"
+  fi
+
   log "Installing software"
   apt-get update
   APT_LISTCHANGES_FRONTEND=none APT_LISTBUGS_FRONTEND=none \
     DEBIAN_FRONTEND=noninteractive apt-get -y --force-yes \
-    --no-install-recommends install \
-    fai-client fai-doc fai-server fai-setup-storage \
-    atftpd dnsmasq imvirt isc-dhcp-server nfs-kernel-server portmap
+    --no-install-recommends install $PACKAGES
 }
 
 prechecks() {

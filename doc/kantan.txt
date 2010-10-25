@@ -1,7 +1,6 @@
 kantan(8)
 =========
 
-[[name]]
 Name
 ----
 
@@ -209,6 +208,13 @@ feedback to the author.
 FAQ
 ---
 
+[[why_kantan]]
+Why Kantan?
+~~~~~~~~~~~
+
+The author of Kantan thinks that lack of proper Q/A is one of the most annoying
+issues in the open source world. So let's do something against that.
+
 [[what_does_kantan_mean]]
 What does Kantan mean?
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -224,19 +230,17 @@ of Kantan: provide a _simple_ method for testing software.
 Why use a VM and not just a chroot?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Whereas chroots provide a nice way for testing for example package installations
+Chroots provide a nice way for testing stuff like package installations. But
 they are limited to some restricted actions. Chroots don't properly support
 testing kernel versions, bootoptions, partitioning tools, LVM, mdadm,... in a
-reasonable environment. The author of Kantan thinks that lack of proper Q/A is
-one of the most annoying issues in the open source world, so let's do something
-against that.
+reasonable environment.
 
 [[todos]]
 TODOs
 -----
 
-Known todos
-~~~~~~~~~~~
+* provide test features and tests from
+  link:http://git.grml.org/?p=grml-unittests.git;a=summary[grml-unittests]
 
 * better logging and data sharing support to collect data and status report
   and control data flow between different virtual machines
