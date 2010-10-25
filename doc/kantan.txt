@@ -53,9 +53,13 @@ image:kantan-screenshot.jpg[link="kantan-screenshot.png"]
 
 Kantan is a set of scripts to automatically test software using KVM
 (http://www.linux-kvm.org/) and the Debian based Linux live system Grml
-(http://grml.org/).  It was originally developed to provide a simple way for
-autotesting specific versions of FAI (http://fai-project.org/) but is expected
-to provide a simple-to-use test suite for autotesting any Linux based software.
+(http://grml.org/). You don't have to set up neither tons of software packages
+nor a complex environment but just follow some simple <<setup,setup
+instructions>>.
+
+It was originally developed to provide a simple way for autotesting specific
+versions of FAI (http://fai-project.org/) but is expected to provide a
+simple-to-use test suite for autotesting any Linux based software.
 
 The concept of Kantan is to boot one virtual machine (the main instance, 'kantan
 server ...') which is supposed to be able to serve as installation server for
@@ -90,9 +94,9 @@ This software is WIP, though released in an early stage to gain feedback,
 testers and developers. It's a prototype implementation mainly in shellscript
 but is expected to be rewritten in a real scripting language like python.
 
-[[setup]]
-Setup and Usage Example
------------------------
+[[requirements]]
+Requirements
+------------
 
 What you need to be able to use Kantan:
 
@@ -164,6 +168,10 @@ then:
   # echo 1 > /proc/sys/net/ipv4/ip_forward
   # iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 /////////////////////////////////////////////////////////////////////////
+
+[[setup]]
+Setup and Usage Instructions
+----------------------------
 
 Install the kantan Debian package, which for now is available from
 http://people.debian.org/~mika/kantan/
