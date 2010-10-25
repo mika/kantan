@@ -29,7 +29,7 @@ log() {
 }
 
 error() {
-  printf "Error: $*\n"
+  printf "Error: $*\n">&2
 }
 # }}}
 
@@ -42,7 +42,7 @@ get_fai_config() {
      cd /tmp
      wget -O fai.conf $FAI_CONF
    else
-     printf "Error retrieving FAI configuration. :(\n" >&2
+     error "Error retrieving FAI configuration. :("
      exit 1
    fi
 
@@ -149,7 +149,7 @@ tftpd_conf() {
   elif [ -r /etc/default/atftpd ] ; then
     atftpd_conf
   else
-    printf "No supported (atftpd/tftpd-hpa) tftpd found.\n" >&2
+    error "No supported (atftpd/tftpd-hpa) tftpd found."
     exit 1
   fi
 }
@@ -202,15 +202,24 @@ EOF
   fi
 
   if [ -z "${FAI_CONFIG_SRC:-}" ] ; then
-    FAI_VERSION=$(dpkg --list fai-server | awk '/^ii/ {print $3}')
-    if dpkg --compare-versions $FAI_VERSION gt 3.5 ; then
-      FAI_CONFIG_SRC=svn://svn.debian.org/svn/fai/trunk/examples/simple/
-    else
-      FAI_CONFIG_SRC=svn://svn.debian.org/svn/fai/branches/stable/3.4/examples/simple/
-    fi
+    FAI_CONFIG_SRC="nfs://$HOST/srv/fai/config"
+    ## use specific config space depending on FAI version, example:
+    # FAI_VERSION=$(dpkg --list fai-server | awk '/^ii/ {print $3}')
+    # if dpkg --compare-versions $FAI_VERSION gt 3.5 ; then
+    #   FAI_CONFIG_SRC=svn://svn.debian.org/svn/fai/trunk/examples/simple/
+    # else
+    #   FAI_CONFIG_SRC=svn://svn.debian.org/svn/fai/branches/stable/3.4/examples/simple/
+    # fi
   fi
 
-  sed -i "s;^FAI_CONFIG_SRC=.*;FAI_CONFIG_SRC=\"$FAI_CONFIG_SRC\";" /etc/fai/fai.conf
+  if grep -q '^FAI_CONFIG_SRC' /etc/fai/fai.conf ; then
+    sed -i "s;^FAI_CONFIG_SRC=.*;FAI_CONFIG_SRC=\"$FAI_CONFIG_SRC\";" /etc/fai/fai.conf
+  else
+    cat >> /etc/fai/fai.conf << EOF
+# FAI deployment script
+FAI_CONFIG_SRC="$FAI_CONFIG_SRC"
+EOF
+  fi
 }
 
 nfs_setup() {
@@ -286,17 +295,17 @@ EOT
 
 fai_setup() {
   # if testing FAI 4.x do not use existing base.tgz
-  FAI_VERSION=$(dpkg --list fai-server | awk '/^ii/ {print $3}')
-  if dpkg --compare-versions $FAI_VERSION gt 3.5 ; then
-    echo "Not installing base.tgz, as version of FAI greater than 3.5."
-  else
-    # download base.tgz to save time...
-    # TODO: support different archs, detect etch/lenny/....
-    if wget 10.0.2.2:8000/base.tgz ; then
-      [ -d /srv/fai/config/basefiles/ ] || mkdir /srv/fai/config/basefiles/
-      mv base.tgz /srv/fai/config/basefiles/FAIBASE.tgz
-    fi
-  fi
+#  FAI_VERSION=$(dpkg --list fai-server | awk '/^ii/ {print $3}')
+#  if dpkg --compare-versions $FAI_VERSION gt 3.5 ; then
+#    echo "Not installing base.tgz, as version of FAI greater than 3.5."
+#  else
+#    # download base.tgz to save time...
+#    # TODO: support different archs, detect etch/lenny/....
+#    if wget 10.0.2.2:8000/base.tgz ; then
+#      [ -d /srv/fai/config/basefiles/ ] || mkdir /srv/fai/config/basefiles/
+#      mv base.tgz /srv/fai/config/basefiles/FAIBASE.tgz
+#    fi
+#  fi
 
   if ! [ -d /srv/fai/nfsroot/live/filesystem.dir ] ; then
     log "Executing fai-setup"
@@ -306,6 +315,10 @@ fai_setup() {
       fai-setup -v | tee /tmp/fai-setup.log
     fi
   fi
+
+  # as fallback
+  [ -d /srv/fai/config/ ] || mkdir -p /srv/fai/config/
+  cp -a /usr/share/doc/fai-doc/examples/simple/* /srv/fai/config/
 
   log "Executing fai-chboot for default host"
   fai-chboot -IFv default
@@ -359,21 +372,19 @@ main() {
   adjust_services
 }
 
-# if executed via netscript bootoption
-# a simple, stupid and not-yet-100% reliable check
-if [[ "$SHLVL" == "2" ]] ; then
+# if executed via netscript bootoption, a simple and stupid check
+# to execute only under according environment
+if [[ "$SHLVL" == "2" ]] || [ -n "${NETSCRIPT:-}" ] ; then
   main
   rc=$?
+  echo "status report from $(date)
+rc=$rc" | telnet 10.0.2.2 8888 || true
 fi
 # }}}
 
 #) 2>&1 | tee "$myname".errors >&2) 3>&1 | tee "$myname".log
 #rc=$(cat "$myname".rc 2>/dev/null)
 #rm -f "$myname".rc
-
-echo "status report from $(date)
-rc=$rc" | telnet 10.0.2.2 8888
-
 #exit $rc
 
 ## END OF FILE #################################################################

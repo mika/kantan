@@ -9,6 +9,18 @@
 set -e
 set -u
 
+info() {
+  printf "Info: $*\n"
+}
+
+warn() {
+  printf "Warn: $*\n"
+}
+
+error() {
+  printf "Error: $*\n">&2
+}
+
 bailout() {
   set +e
   [ -n "${socat_pid:-}" ] && kill -9 "$socat_pid" &>/dev/null
@@ -56,7 +68,7 @@ server_execution() {
   current_working_dir=$(pwd)
 
   if ! [ -d "${ISO_MOUNT}/boot" ] ; then
-    printf "Error: no directory /boot found on $ISO_MOUNT - forgot to mount ISO?\n"
+    error "Error: no directory /boot found on $ISO_MOUNT - forgot to mount ISO?"
     exit 1
   fi
 
@@ -68,25 +80,25 @@ server_execution() {
   INITRD=$(find ${ISO_MOUNT}/boot -name initrd.gz -print0)
 
   if [ -z "${KERNEL:-}" ] ; then
-    printf "Error: no kernel file linux26 found on mount point $ISO_MOUNT\n"
+    error "Error: no kernel file linux26 found on mount point $ISO_MOUNT"
     exit 1
   fi
 
   if [ -z "${INITRD:-}" ] ; then
-    printf "Error: no initrd file initrd.gz found on mount point $ISO_MOUNT\n"
+    error "Error: no initrd file initrd.gz found on mount point $ISO_MOUNT"
     exit 1
   fi
 
-  printf "Starting up kvm server instance\n"
-  printf "Connect via VNC running 'vncviewer localhost'\n"
-  printf "Connect via serial console running 'cu -l /dev/pts/\$ID\n"
-  printf "Stop execution via entering 'quit'\n"
+  info "Starting up kvm server instance"
+  info "Connect via VNC running 'vncviewer localhost'"
+  info "Connect via serial console running 'cu -l /dev/pts/\$ID"
+  info "Stop execution via entering 'quit'"
 
   tmpfile=$(mktemp)
   socat -u TCP4-LISTEN:8888,reuseaddr,fork - > "${tmpfile}" &
   socat_pid="$!"
 
-  printf "Serving /usr/share/kantan/scripts/ to port 8000 for netscript bootoption.\n"
+  info "Serving /usr/share/kantan/scripts/ to port 8000 for netscript bootoption."
   cd /usr/share/kantan/scripts/
   python -m SimpleHTTPServer 8000 &>/dev/null &
   http_pid_scripts="$!"
@@ -94,7 +106,7 @@ server_execution() {
   cd "$current_working_dir"
 
   if ! [ -d "debs" ] ; then
-    printf "No directory debs/ found, will not serve local Debian packages." >&2
+    warn "No directory debs/ found, will not serve local Debian packages."
   else
     cd debs
     dpkg-scanpackages . | gzip > Packages.gz
@@ -104,14 +116,14 @@ server_execution() {
 
   cd "$current_working_dir"
 
-  printf "Starting KVM instance\n"
-  kvm -k en-us -m "$MEMORY" -serial pty \
+  info "Starting KVM instance"
+  kvm -k en-us -m "${MEMORY:-1024}" -serial pty \
       -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=0 \
       -net user,vlan=0 \
       -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=1 \
       -net vde,sock=${VDE_SWITCH},vlan=1 \
-      -hda "$HDA" -cdrom "$ISO_FILE" -kernel "$KERNEL" -initrd "$INITRD" \
-      -append "$APPEND" -vnc :0 $KVM_ARGS &
+      -hda "${HDA}" -cdrom "${ISO_FILE}" -kernel "${KERNEL}" -initrd "${INITRD}" \
+      -append "${APPEND} ${ADDITIONAL_KVMSERVER_ARGS:-}" -vnc :0 ${KVM_ARGS:-} &
   kvm_pid="$!"
 
   console
@@ -121,25 +133,24 @@ server_execution() {
 client_execution() {
   if [ -n "$CLIENTNAME" ] ; then
     if [ -r "/etc/kantan/${CLIENTNAME}.cfg" ] ; then
-      printf "Reading configuration file /etc/kantan/${CLIENTNAME}.cfg\n"
+      info "Reading configuration file /etc/kantan/${CLIENTNAME}.cfg"
       . "/etc/kantan/${CLIENTNAME}.cfg"
     else
-      printf "Configuration file /etc/kantan/${CLIENTNAME}.cfg not found, using defaults.\n"
+      info "Configuration file /etc/kantan/${CLIENTNAME}.cfg not found, using defaults."
     fi
   fi
 
   if ! [ -r ${VDE_SWITCH} ] ; then
-    printf "Error retreiving vde_switch socket ${VDE_SWITCH}\n">&2
-    printf "Server process not running yet?\n" >&2
+    error "Error retreiving vde_switch socket ${VDE_SWITCH}"
+    error "Server process not running yet?"
     exit 1
   fi
 
-  # defaults if unset
+  # default if unset
   [ -z "${CLIENT_ISO:-}" ] && CLIENT_ISO='/usr/share/kantan/netboot/gpxe-1.0.1-gpxe.iso'
-  [ -z "${CLIENT_MEMORY:-}" ] && CLIENT_MEMORY=512
 
   if [ -z "${KVM_CMDLINE:-}" ] ; then
-    KVM_CMDLINE="kvm -k en-us -m ${CLIENT_MEMORY} \
+    KVM_CMDLINE="kvm -k en-us -m ${CLIENT_MEMORY:-512} \
 -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),model=e1000,vlan=1 \
 -net vde,sock=${VDE_SWITCH},vlan=1 \
 -cdrom ${CLIENT_ISO} -hda ${HDA} ${CLIENT_ARGS:-}" # -boot once=d
@@ -214,6 +225,10 @@ if [[ "${1:-}" == "server" ]] ; then
   ISO_FILE="${3:-}"
   ISO_MOUNT="${4:-}"
 
+  if [ -n "${5:-}" ] ; then
+    ADDITIONAL_KVMSERVER_ARGS="$5"
+  fi
+
   server_execution
 
 elif [[ "${1:-}" == "client" ]] ; then
@@ -233,7 +248,7 @@ elif [[ "${1:-}" == "client" ]] ; then
 
   client_execution
 else
-  printf "Error: Unsupported argument '${1}' - exiting.\n" >&2
+  error "Error: Unsupported argument '${1}' - exiting."
   exit 1
 fi
 

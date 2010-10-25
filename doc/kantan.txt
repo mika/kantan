@@ -12,11 +12,13 @@ Synopsis
 
 For the server (main) instance:
 
-  kantan server <disk.img> <grml.iso> </mnt/point/of/iso/>
+  kantan server <disk.img> <grml.iso> </mnt/point/of/iso/> [kvm_arguments]
 
 or for client(s):
 
   kantan client <disk.img> <name> [kvm_arguments]
+
+For further details please see section <<options>> and <<setup>>.
 
 [[options]]
 Options
@@ -24,12 +26,14 @@ Options
 
 Options for _kantan server_:
 
- <disk.img> <grml.iso> </mnt/point/of/iso/>
+ <disk.img> <grml.iso> </mnt/point/of/iso/> [kvm_arguments]
 
 where _disk.img_ is an existing image file (created e.g. via 'qemu-img create
-disk.img 3G'), grml.iso is an a Grml ISO (http://grml.org/) and
+disk.img 3G'), grml.iso is an a Grml ISO (http://grml.org/),
 /mnt/point/of/iso/ refers to the mount point where the specified Grml ISO is
-mounted to (e.g. 'mount -o loop grml-medium_sid_latest.iso /mnt/test').
+mounted to (e.g. 'mount -o loop grml-medium_sid_latest.iso /mnt/test') and
+_kvm_arguments_ are optional and can be used to add additional arguments to the
+KVM commandline, like 'vga=791'.
 
 Options for _kantan client_:
 
@@ -41,14 +45,11 @@ disk.img 3G'), _name_ assigns the virtual instance a name (for reading
 can be used to add additional arguments to the KVM commandline, like '-boot d'
 for booting from the ISO.
 
- Usage example:
-
- kantan server /tmp/empty.img /tmp/grml-medium_sid_latest.iso /mnt/test
- kantan client /tmp/fai_testclient.img grml "-boot d"
-
 [[description]]
 Description
 -----------
+
+image:kantan-screenshot.jpg[link="kantan-screenshot.png"]
 
 Kantan is a set of scripts to automatically test software using KVM
 (http://www.linux-kvm.org/) and the Debian based Linux live system Grml
@@ -90,15 +91,15 @@ testers and developers. It's a prototype implementation mainly in shellscript
 but is expected to be rewritten in a real scripting language like python.
 
 [[setup]]
-Setup
------
+Setup and Usage Example
+-----------------------
 
 What you need to be able to use Kantan:
 
 * a Debian (based) system (any other Linux system might do it as well, but
   the scripts and docs are optimised for Debian (based) systems for now)
 
-* a system running i386 or amd64 architecture (to smoothely use KVM with Grml)
+* a system running i386 or amd64 architecture (to smoothly use KVM)
 
 * at least 2GB of RAM are recommended
 
@@ -156,13 +157,13 @@ iface vnet inet static
       netmask 255.255.255.0
 
 # ifup vnet
-/////////////////////////////////////////////////////////////////////////
 
 Make sure the network interfaces inside the VM's have access to the internet
 then:
 
   # echo 1 > /proc/sys/net/ipv4/ip_forward
   # iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+/////////////////////////////////////////////////////////////////////////
 
 Install the kantan Debian package, which for now is available from
 http://people.debian.org/~mika/kantan/
@@ -172,37 +173,40 @@ Grab a Grml ISO and mount it somewhere:
   % wget download.grml.org/grml64-medium_2010.04.iso
   % wget download.grml.org/grml64-medium_2010.04.iso.md5
   % md5sum -c grml64-medium_2010.04.iso.md5
-  # mount -o loop grml64-medium_2010.04.iso /mnt/test
+  % sudo mount -o loop grml64-medium_2010.04.iso /mnt/test
 
-If necessary adjust /etc/kantan/kvm-server.cfg according to your needs.
+If necessary adjust /etc/kantan/server.cfg according to your needs.
 
-Create an image file for use as /srv within the FAI server (qemu-img is
-available from qemu-utils):
+Create image files for use as /srv within FAI server and as harddisk for the FAI
+client (qemu-img is available from qemu-utils):
 
-  % qemu-img create empty.img 3G
+  % qemu-img create fai-server.img 3G
+  % qemu-img create fai-client.img 3G
 
-If you want to provide any local Debian packages to the FAI server instance just
-create the directory _debs_ in the current working directory (being the one
-where you'll invoke kantan then), like for example:
+If you want to provide any local Debian packages to the FAI server instance
+(like for example a specific version of FAI you'd like to test) just create the
+directory _debs_ in the current working directory (being the one where you'll
+invoke kantan later on), like for example:
 
   % mkdir debs
-  % dget -u -d http://fai-project.org/download/experimental/fai_4.0~beta2+experimental36_amd64.changes
-  % mv -i *.deb debs/
+  % dget -u -d http://fai-project.org/download/squeeze/fai_3.4.4_amd64.changes
+  % mv fai*.deb debs/
 
 Finally execute the kantan script as $USER for the server instance, providing
-the path to the generated image file and the mountpoint where the Grml ISO is
-mounted on:
+the path to the generated image file, the Grml-ISO and the mountpoint where the
+Grml ISO is mounted on:
 
-  % kantan server empty.img grml64-medium_2010.04.iso /mnt/test
+  % kantan server fai-server.img grml64-medium_2010.04.iso /mnt/test
 
-Finally start the FAI client instances (the ones that should be installed by the
-kantan server VM):
+Finally start the FAI client instance (the one that should be installed by the
+kantan server VM), specifying _grml_ as client name (so /etc/kantan/grml.cfg
+would be read if it exists) and "-boot d" as boot option for KVM so it uses the
+PXE ISO for booting (just drop "-boot d" then when installation of client has
+finished):
 
-  % qemu-img create fai-client.img 3G
-  % kantan client fai-client.img
+  % kantan client fai-client.img grml "-boot d"
 
-That's it. Further usage scenarious and tests will come up. Please provide
-feedback to the author.
+That's it! :) Further usage scenarious and tests will follow.
 
 [[faq]]
 FAQ
