@@ -279,12 +279,18 @@ Checkout
   - http://www.mozilla.org/projects/testopia/
   - https://wiki.ubuntu.com/AutomatedTesting
   - https://wiki.ubuntu.com/AutomatedTestingDeployment
+  - https://wiki.ubuntu.com/Testing/ISO/Procedures
   - https://wiki.edubuntu.org/VirtFeatureVerification
-  - http://groups.csail.mit.edu/uid/sikuli/
+
+* tools that might help in automated testing:
+  - link:http://ldtp.freedesktop.org/wiki/[GNU LDTP]
+  - link:http://seleniumhq.org/[Selenium]
+  - link:http://shunit.sourceforge.net/[ShUnit]
+  - link:http://groups.csail.mit.edu/uid/sikuli/[Sikuli]
+  - link:http://synflood.at/programs.html[Tuitest]
+  - link:http://hoopajoo.net/projects/xautomation.html[Xautomation]
+  - link:http://pythonpaste.org/webtest/[WebTest]
   - http://en.wikipedia.org/wiki/List_of_GUI_testing_tools
-  - http://seleniumhq.org/
-  - http://ldtp.freedesktop.org/wiki/
-  - http://hoopajoo.net/projects/xautomation.html
 
 //////////////////////////////////////////////////
 Literature:
