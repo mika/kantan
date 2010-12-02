@@ -109,6 +109,12 @@ server_execution() {
     warn "No directory debs/ found, will not serve local Debian packages."
   else
     cd debs
+
+    if ! which dpkg-scanpackages &>/dev/null ; then
+      error "dpkg-scanpackages not available, please install package dpkg-dev."
+      exit 1
+    fi
+
     dpkg-scanpackages . | gzip > Packages.gz
     python -m SimpleHTTPServer 8080 &>/dev/null &
     http_pid_debs="$!"

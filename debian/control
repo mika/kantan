@@ -12,7 +12,7 @@ Vcs-Browser: http://git.grml.org/?p=kantan.git
 Package: kantan
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, socat, qemu-kvm | kvm, vde2
-Suggests: qemu-utils, cu, xtightvncviewer
+Suggests: qemu-utils, cu, xtightvncviewer, dpkg-dev
 Description: simple test suite for autotesting using Grml and KVM
  kantan is a test suite for automatically testing software
  using KVM and the Grml linux live system (http://grml.org/).
