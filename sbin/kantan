@@ -132,6 +132,10 @@ server_execution() {
     VLAN1="-net tap,vlan=1,ifname=$VLAN1_DEVICE"
   fi
 
+  if [ -z "${KVMSERVER_APPEND:-}" ] ; then
+    KVMSERVER_APPEND="boot=live ignore_bootid noquickconfig netscript=http://10.0.2.2:8000/netscript.sh console=tty1 console=ttyS0"
+  fi
+
   info "Starting KVM instance"
   kvm -k en-us -m "${MEMORY:-1024}" -serial pty \
       -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=0 \
@@ -139,7 +143,7 @@ server_execution() {
       -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=1 \
       $VLAN1 \
       -hda "${HDA}" -cdrom "${ISO_FILE}" -kernel "${KERNEL}" -initrd "${INITRD}" \
-      -append "${APPEND} ${ADDITIONAL_KVMSERVER_ARGS:-}" -vnc :0 ${KVM_ARGS:-} &
+      -append "${KVMSERVER_APPEND} ${ADDITIONAL_KVMSERVER_ARGS:-}" -vnc :0 ${KVM_ARGS:-} &
   kvm_pid="$!"
 
   console
