@@ -348,10 +348,10 @@ adjust_services() {
     /etc/init.d/atftpd restart
   fi
 
-  if [ -x /etc/init.d/dhcp3-server ] ; then
-    /etc/init.d/dhcp3-server restart
-  else
+  if [ -x /etc/init.d/isc-dhcp-server ] ; then
     /etc/init.d/isc-dhcp-server restart
+  else
+    /etc/init.d/dhcp3-server restart
   fi
 }
 
