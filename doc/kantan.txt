@@ -247,6 +247,57 @@ they are limited to some restricted actions. Chroots don't properly support
 testing kernel versions, bootoptions, partitioning tools, LVM, mdadm,... in a
 reasonable environment.
 
+[[external_system]]
+How can I use Kantan with physical machines?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default Kantan uses vde_switch for network configuration. This provides a
+working network setup between the server and the client(s) machines without
+having to configure anything. But if you want to use external, physical machines
+this does not work any longer.  Instead just set up tap devices so you can
+install clients on real[tm] hardware.
+
+Assume the following setup: the Kantan server is the server where you're executing
+"kantan server ...". The test client is the machine where you want to boot
+the system which would be corresponding to "kantan client ..." (but instead of
+executing "kantan client ..." as virtual guest you're running it on physical
+machine). NIC eth0 is providing internet access (WAN). NIC eth1 is the network
+link between the server and the client machine.
+
+  +----------------+
+  | Kantan   ,-----|----- eth0 ----- [ Internet/WAN ]
+  | Server   |     |
+  |        [tap1]  |
+  |          |     |
+  |          `-----|----- eth1 ----- [ Test client ]
+  +----------------+
+
+Then the following configuration should do the trick for you:
+
+  # example config for /etc/network/interfaces
+  iface vnet inet static
+        post-up tunctl -u grml -g grml -t tap1 ; brctl addif vnet tap1 ; ip link set up dev tap1
+        post-up brctl addif vnet eth1
+        pre-down ip link set down dev tap1 ; tunctl -d tap1
+        bridge_ports none
+        address 192.168.10.1
+        netmask 255.255.255.0
+
+Configure /etc/kantan/server.cfg:
+
+  VLAN1_DEVICE='tap1'
+
+Then execute:
+
+  ifup vnet
+  echo 1 > /proc/sys/net/ipv4/ip_forward
+  iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+
+To forward DNS requests from the clients to the physical net use dnsmasq:
+
+  /etc/init.d/dnsmasq start || apt-get install dnsmasq
+
 [[todos]]
 TODOs
 -----

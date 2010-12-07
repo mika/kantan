@@ -122,12 +122,22 @@ server_execution() {
 
   cd "$current_working_dir"
 
+  # default to vde:
+  VLAN1="-net vde,sock=${VDE_SWITCH},vlan=1"
+  # but if VLAN1_DEVICE is configured then use tap devices instead:
+  if [ -z "${VLAN1_DEVICE:-}" ] ; then
+    info "Using vde_switch setup (configure VLAN1_DEVICE to use tap instead)."
+  else
+    info "Using tap setup as VLAN1_DEVICE is configured."
+    VLAN1="-net tap,vlan=1,ifname=$VLAN1_DEVICE"
+  fi
+
   info "Starting KVM instance"
   kvm -k en-us -m "${MEMORY:-1024}" -serial pty \
       -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=0 \
       -net user,vlan=0 \
       -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=1 \
-      -net vde,sock=${VDE_SWITCH},vlan=1 \
+      $VLAN1 \
       -hda "${HDA}" -cdrom "${ISO_FILE}" -kernel "${KERNEL}" -initrd "${INITRD}" \
       -append "${APPEND} ${ADDITIONAL_KVMSERVER_ARGS:-}" -vnc :0 ${KVM_ARGS:-} &
   kvm_pid="$!"
