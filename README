@@ -1,7 +1,16 @@
-Kantan is a set of scripts to automatically test software using KVM (http://www.linux-kvm.org/) and the Debian based Linux live system Grml (http://grml.org/). You don’t have to set up neither tons of software packages nor a complex environment but just follow some simple setup instructions.
+Kantan is a set of scripts to automatically test software using KVM
+(http://www.linux-kvm.org/) and the Debian based Linux live system Grml
+(http://grml.org/). You don’t have to set up neither tons of software packages
+nor a complex environment but just follow some simple setup instructions.
 
-It was originally developed to provide a simple way for autotesting specific versions of FAI (http://fai-project.org/) but is expected to provide a simple-to-use test suite for autotesting any Linux based software.
+It was originally developed to provide a simple way for autotesting specific
+versions of FAI (http://fai-project.org/) but is expected to provide a
+simple-to-use test suite for autotesting any Linux based software.
 
-The concept of Kantan is to boot one virtual machine (the main instance, kantan server …) which is supposed to be able to serve as installation server for further virtual machines if needed. This concept for example allows to automatically set up a FAI server which then deploys further started machines (the clients, kantan client …).
+The concept of Kantan is to boot one virtual machine (the main instance, kantan
+server …) which is supposed to be able to serve as installation server for
+further virtual machines if needed. This concept for example allows to
+automatically set up a FAI server which then deploys further started machines
+(the clients, kantan client …).
 
 For further details visit http://grml.org/kantan/
