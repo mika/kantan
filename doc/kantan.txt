@@ -280,7 +280,7 @@ Then the following configuration should do the trick for you:
         post-up brctl addif vnet eth1
         pre-down ip link set down dev tap1 ; tunctl -d tap1
         bridge_ports none
-        address 192.168.10.1
+        address 192.168.10.2
         netmask 255.255.255.0
 
 Configure /etc/kantan/server.cfg:
