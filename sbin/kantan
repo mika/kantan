@@ -90,8 +90,8 @@ server_execution() {
   fi
 
   info "Starting up kvm server instance"
-  info "Connect via VNC running 'vncviewer localhost'"
-  info "Connect via serial console running 'cu -l /dev/pts/\$ID"
+  info "Connect via VNC: 'vncviewer localhost'"
+  info "Connect via serial console: 'sudo screen -m /dev/pts/\$ID 115200 || cu -l /dev/pts/\$ID'"
   info "Stop execution via entering 'quit'"
 
   tmpfile=$(mktemp)
