@@ -61,7 +61,7 @@ software_install() {
 
   if [ -z "$PACKAGES" ] ; then
     PACKAGES="fai-client fai-doc fai-server fai-setup-storage \
-atftpd dnsmasq imvirt isc-dhcp-server nfs-kernel-server portmap"
+atftpd dnsmasq imvirt isc-dhcp-server nfs-kernel-server"
   fi
 
   log "Installing software"
@@ -327,9 +327,21 @@ fai_setup() {
 adjust_services() {
   log "Restarting services"
   # brrrrr, but works...
-  /etc/init.d/portmap restart
-  /etc/init.d/nfs-common restart
-  /etc/init.d/nfs-kernel-server restart || true
+  if [ -x /etc/init.d/portmap ] ; then
+    /etc/init.d/portmap restart
+  fi
+
+  if [ -x /etc/init.d/rpcbind ] ; then
+    /etc/init.d/rpcbind restart
+  fi
+
+  if [ -x /etc/init.d/nfs-common ] ; then
+    /etc/init.d/nfs-common restart
+  fi
+
+  if [ -x /etc/init.d/nfs-kernel-server ] ; then
+    /etc/init.d/nfs-kernel-server restart || true
+  fi
 
   if [ -x /etc/init.d/dnsmasq ] ; then
     /etc/init.d/dnsmasq restart
