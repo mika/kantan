@@ -64,8 +64,22 @@ software_install() {
 atftpd dnsmasq imvirt isc-dhcp-server nfs-kernel-server"
   fi
 
+  # might not work immediately, so let's give it a chance to complete
+  log "Update software package information."
+  for i in {1..10}; do
+    if aptitude update ; then
+      break
+    else
+      log "Problem retrieving package information, will try again..."
+      sleep 5
+    fi
+    if [[ "$i" -eq 10 ]] ; then
+      error "Error retriving software package list, giving up."
+      exit 1
+    fi
+  done
+
   log "Installing software"
-  apt-get update
   APT_LISTCHANGES_FRONTEND=none APT_LISTBUGS_FRONTEND=none \
     DEBIAN_FRONTEND=noninteractive apt-get -y --force-yes \
     --no-install-recommends install $PACKAGES
