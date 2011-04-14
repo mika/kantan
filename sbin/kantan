@@ -167,7 +167,7 @@ client_execution() {
   fi
 
   # default if unset
-  [ -z "${CLIENT_ISO:-}" ] && CLIENT_ISO='/usr/share/kantan/netboot/gpxe-1.0.1-gpxe.iso'
+  [ -z "${CLIENT_ISO:-}" ] && CLIENT_ISO='/usr/share/kantan/netboot/ipxe.iso'
 
   if [ -z "${KVM_CMDLINE:-}" ] ; then
     KVM_CMDLINE="kvm -k en-us -m ${CLIENT_MEMORY:-512} \
