@@ -280,7 +280,7 @@ disk_setup() {
 
     cat << EOT | setup-storage -X -f -
 disk_config $DISK
-primary - 100% ext3 rw
+primary - 100% ext4 rw
 EOT
   fi
 
