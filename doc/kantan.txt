@@ -35,6 +35,12 @@ mounted to (e.g. 'mount -o loop grml-medium_sid_latest.iso /mnt/test') and
 _kvm_arguments_ are optional and can be used to add additional arguments to the
 KVM commandline, like 'vga=791'.
 
+[TIP]
+The </mnt/point/of/iso/> doesn't necessarily need to be a real mountpoint.
+It's fine if you just copy linux26 and initrd.gz from /boot/* of the Grml
+ISO to </path/to/foobar/boot/> and specify </path/to/foobar/> as mountpoint
+directory then.
+
 Options for _kantan client_:
 
  <disk.img> <name> [kvm_arguments]
@@ -332,6 +338,7 @@ Checkout
   - https://wiki.ubuntu.com/AutomatedTestingDeployment
   - https://wiki.ubuntu.com/Testing/ISO/Procedures
   - https://wiki.edubuntu.org/VirtFeatureVerification
+  - http://wiki.virtualsquare.org/wiki/index.php/VDE_Basic_Networking#Dump_or_Monitor_switch_traffic
 
 * tools that might help in automated testing:
   - link:http://ldtp.freedesktop.org/wiki/[GNU LDTP]

@@ -67,8 +67,8 @@ server_execution() {
 
   current_working_dir=$(pwd)
 
-  if ! [ -d "${ISO_MOUNT}/boot" ] ; then
-    error "Error: no directory /boot found on $ISO_MOUNT - forgot to mount ISO?"
+  if ! [ -d "${ISO_DIR}/boot" ] ; then
+    error "Error: no directory /boot found on $ISO_DIR (forgot to mount ISO?)"
     exit 1
   fi
 
@@ -76,16 +76,16 @@ server_execution() {
   vde_switch -s ${VDE_SWITCH} &
   vde_pid="$!"
 
-  KERNEL=$(find ${ISO_MOUNT}/boot -name linux26 -print0)
-  INITRD=$(find ${ISO_MOUNT}/boot -name initrd.gz -print0)
+  KERNEL=$(find ${ISO_DIR}/boot -name linux26 -print0)
+  INITRD=$(find ${ISO_DIR}/boot -name initrd.gz -print0)
 
   if [ -z "${KERNEL:-}" ] ; then
-    error "Error: no kernel file linux26 found on mount point $ISO_MOUNT"
+    error "Error: no kernel file linux26 found on $ISO_DIR"
     exit 1
   fi
 
   if [ -z "${INITRD:-}" ] ; then
-    error "Error: no initrd file initrd.gz found on mount point $ISO_MOUNT"
+    error "Error: no initrd file initrd.gz found on $ISO_DIR"
     exit 1
   fi
 
@@ -243,7 +243,7 @@ if [[ "${1:-}" == "server" ]] ; then
   fi
 
   ISO_FILE="${3:-}"
-  ISO_MOUNT="${4:-}"
+  ISO_DIR="${4:-}"
 
   if [ -n "${5:-}" ] ; then
     ADDITIONAL_KVMSERVER_ARGS="$5"
