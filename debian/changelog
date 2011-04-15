@@ -1,3 +1,50 @@
+kantan (0.0.2) unstable; urgency=low
+
+  * Feature related changes:
+    - [4bd68eb] Add check for presence of dpkg-scanpackages and add
+      dpkg-dev to Suggests.
+    - [84d3930] Support tap devices for use with physical machines as
+      clients.
+    - [35881fb] Disable server configs by default and assume defaults in
+      script instead. Rename $APPEND to $KVMSERVER_APPEND + support
+      overriding it through env.
+    - [84f1c4c] Do not completely randomize MAC address, use 00:0c:29
+      for first three bytes to be ignored by udev's 75-persistent-net-
+      generator.rules.
+    - [55606f4] Provide information how to run screen for serial console
+      in startup message.
+    - [e57d3b3] Do not use e1000 as driver for KVM but virtio instead.
+    - [00b4f99] Remove gpxe and use ipxe instead.
+    - [bd0a79f] Rename $ISO_MOUNT into $ISO_DIR as argument for
+      mountpoint doesn't need to be a real mountpoint.
+
+  * Documentation related changes:
+    - [656c2cc] Add initial README
+    - [3595c27] README: Rewrap lines
+    - [fcffed7] doc: Update references/URLs
+    - [8390071] Add doc/usecases.txt to document design ideas.
+    - [8998060] Use different IP address for bridge interface.
+
+  * netscript related changes:
+    - [211a6ff] Do not depend on portmap so nfs-kernel-server is installable
+      in Debian/sid.
+    - [49c731e] Use isc-dhcp-server by default and fallback to dhcp3-server
+      instead of the other way.
+    - [83ec6ef] try running aptitude update up to 10 times with 5 seconds
+      break in between.
+    - [30699de] restart nfs-kernel-server and rpcbind once again,
+      otherwise mounting fails from outside.
+    - [4a4396a] execute ifdown eth1 and kill dhclient of eth1 before
+      restarting network.
+    - [8a6f421] do not write fai.conf but run fai-chboot with configspace
+      URL instead.
+    - [ec51b9b] mount /srv with noatime.
+    - [f62437e] use ext4 instead of ext3.
+    - [32e6a5e] fai.conf: use simple examples from 3.4 stable branch as
+      default for commented FAI_CONFIG_SRC example.
+
+ -- Michael Prokop <mika@grml.org>  Fri, 15 Apr 2011 19:39:47 +0200
+
 kantan (0.0.1) unstable; urgency=low
 
   * Initial version.
