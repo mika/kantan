@@ -345,15 +345,29 @@ adjust_services() {
     /etc/init.d/portmap restart
   fi
 
-  if [ -x /etc/init.d/rpcbind ] ; then
-    /etc/init.d/rpcbind restart
-  fi
-
   if [ -x /etc/init.d/nfs-common ] ; then
     /etc/init.d/nfs-common restart
   fi
 
+  if [ -x /etc/init.d/rpcbind ] ; then
+    /etc/init.d/rpcbind restart
+  fi
+
   if [ -x /etc/init.d/nfs-kernel-server ] ; then
+    /etc/init.d/nfs-kernel-server restart || true
+  fi
+
+  # otherwise "nfsd mountd" might not be running :-/
+  if ! rpcinfo -p localhost >/dev/null ; then
+    if [ -x /etc/init.d/portmap ] ; then
+      /etc/init.d/portmap restart
+    fi
+    if [ -x /etc/init.d/rpcbind ] ; then
+      /etc/init.d/rpcbind restart
+    fi
+  fi
+
+  if ! showmount -e localhost | grep -q /srv/fai ; then
     /etc/init.d/nfs-kernel-server restart || true
   fi
 
