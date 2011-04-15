@@ -249,7 +249,7 @@ disk_setup() {
 
   # existing installation present? re-use it
   # just rm -rf /srv to force re-installation of FAI
-  if mount /dev/${DISK}1 /srv ; then
+  if mount -o noatime /dev/${DISK}1 /srv ; then
     log "Existing partition found, trying to re-use."
 
     if ! [ -r /srv/fai_netscript_done ] ; then
@@ -286,7 +286,7 @@ EOT
 
   mv /srv /srv.old
   mkdir /srv
-  mount /dev/${DISK}1 /srv
+  mount -o noatime /dev/${DISK}1 /srv
   mv /srv.old/* /srv/ || true
   rmdir /srv.old
   touch /srv/fai_netscript_done
