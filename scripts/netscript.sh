@@ -184,6 +184,11 @@ iface eth1 inet static
 EOF
   fi
 
+  # required so dhclient doesn't listen on eth1 anymore
+  ifdown eth1
+  # be 100% sure :-/
+  kill -9 $(pgrep -f dhclient.eth1)
+
   /etc/init.d/networking restart
 
   echo 1 > /proc/sys/net/ipv4/ip_forward
