@@ -219,26 +219,6 @@ fai_conf() {
 $FAI_MIRROR
 EOF
   fi
-
-  if [ -z "${FAI_CONFIG_SRC:-}" ] ; then
-    FAI_CONFIG_SRC="nfs://$HOST/srv/fai/config"
-    ## use specific config space depending on FAI version, example:
-    # FAI_VERSION=$(dpkg --list fai-server | awk '/^ii/ {print $3}')
-    # if dpkg --compare-versions $FAI_VERSION gt 3.5 ; then
-    #   FAI_CONFIG_SRC=svn://svn.debian.org/svn/fai/trunk/examples/simple/
-    # else
-    #   FAI_CONFIG_SRC=svn://svn.debian.org/svn/fai/branches/stable/3.4/examples/simple/
-    # fi
-  fi
-
-  if grep -q '^FAI_CONFIG_SRC' /etc/fai/fai.conf ; then
-    sed -i "s;^FAI_CONFIG_SRC=.*;FAI_CONFIG_SRC=\"$FAI_CONFIG_SRC\";" /etc/fai/fai.conf
-  else
-    cat >> /etc/fai/fai.conf << EOF
-# FAI deployment script
-FAI_CONFIG_SRC="$FAI_CONFIG_SRC"
-EOF
-  fi
 }
 
 nfs_setup() {
@@ -339,8 +319,19 @@ fai_setup() {
   [ -d /srv/fai/config/ ] || mkdir -p /srv/fai/config/
   cp -a /usr/share/doc/fai-doc/examples/simple/* /srv/fai/config/
 
+  if [ -z "${FAI_CONFIG_SRC:-}" ] ; then
+    FAI_CONFIG_SRC="nfs://$HOST/srv/fai/config"
+    ## use specific config space depending on FAI version, example:
+    # FAI_VERSION=$(dpkg --list fai-server | awk '/^ii/ {print $3}')
+    # if dpkg --compare-versions $FAI_VERSION gt 3.5 ; then
+    #   FAI_CONFIG_SRC=svn://svn.debian.org/svn/fai/trunk/examples/simple/
+    # else
+    #   FAI_CONFIG_SRC=svn://svn.debian.org/svn/fai/branches/stable/3.4/examples/simple/
+    # fi
+  fi
+
   log "Executing fai-chboot for default host"
-  fai-chboot -IFv default
+  fai-chboot -IFv -u "$FAI_CONFIG_SRC" default
 }
 
 adjust_services() {
