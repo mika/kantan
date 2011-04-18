@@ -339,6 +339,7 @@ Checkout
   - https://wiki.ubuntu.com/Testing/ISO/Procedures
   - https://wiki.edubuntu.org/VirtFeatureVerification
   - http://wiki.virtualsquare.org/wiki/index.php/VDE_Basic_Networking#Dump_or_Monitor_switch_traffic
+  - http://developer.amd.com/zones/opensource/AMDTapper/Pages/default.aspx
 
 * tools that might help in automated testing:
   - link:http://ldtp.freedesktop.org/wiki/[GNU LDTP]
