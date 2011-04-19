@@ -327,6 +327,8 @@ Known todos
 
 * support name-based profiles
 
+* support multiple custom disks
+
 Checkout
 ~~~~~~~~
 * use kvm's monitor support for sharing/controlling data?
