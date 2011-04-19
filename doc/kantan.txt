@@ -329,6 +329,8 @@ Known todos
 
 * support multiple custom disks
 
+* support multilple custom NICs
+
 Checkout
 ~~~~~~~~
 * use kvm's monitor support for sharing/controlling data?
