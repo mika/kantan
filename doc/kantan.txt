@@ -321,9 +321,11 @@ Known todos
   execution within Grml
 
 * netscript.sh:
-  - support svn/git/... config space retrieval
+  - support svn/git/... config space retrieval (WIP)
   - improve arch and suite support through base.tgz
   - support canceling the script and getting a debugshell
+
+* support name-based profiles
 
 Checkout
 ~~~~~~~~
