@@ -331,6 +331,8 @@ Known todos
 
 * support multilple custom NICs
 
+* packages from debs/ should always have higher pinning
+
 Checkout
 ~~~~~~~~
 * use kvm's monitor support for sharing/controlling data?
