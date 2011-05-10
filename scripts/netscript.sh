@@ -392,6 +392,22 @@ adjust_services() {
   fi
 }
 
+hook_post() {
+   . /etc/grml/autoconfig.functions
+   CONFIG="$(getbootparam 'netscript' 2>/dev/null)"
+   FAI_CONF="${CONFIG%%netscript.sh}hook-post"
+   if [ -n "$FAI_CONF" ] ; then
+     cd /tmp
+     wget -O hook-post $FAI_CONF
+   else
+     error "Error retrieving hook-post :("
+     exit 1
+   fi
+
+   . hook-post
+}
+
+
 # main execution itself {{{
 
 main() {
@@ -407,6 +423,7 @@ main() {
   nfs_setup
   fai_setup
   adjust_services
+  hook_post
 }
 
 # if executed via netscript bootoption, a simple and stupid check
