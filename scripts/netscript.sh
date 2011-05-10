@@ -50,6 +50,7 @@ get_fai_config() {
 }
 
 software_install() {
+  sed -i "s;cdn.debian.net;${DEBIAN_MIRROR};" /etc/apt/sources.list.d/debian.list
   if [ -z "$FAI_MIRROR" ] ; then
     log "Configuration \$FAI_MIRROR unset, skipping sources.list step."
   else
@@ -210,7 +211,7 @@ fai_conf() {
 
   sed -i "s;FAI_DEBOOTSTRAP=.*;FAI_DEBOOTSTRAP=\"lenny http://${DEBIAN_MIRROR}/debian\";" \
       /etc/fai/make-fai-nfsroot.conf
-  sed -i "s/cdn.debian.net/${DEBIAN_MIRROR}/" /etc/fai/apt/sources.list
+  sed -i "s;cdn.debian.net;${DEBIAN_MIRROR};" /etc/fai/apt/sources.list
 
   # make sure new FAI version is available inside nfsroot as well
   if ! grep -q '^# FAI deployment script' /etc/fai/apt/sources.list ; then
