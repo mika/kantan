@@ -9,10 +9,6 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-INSTALL = install
-INSTALL_EXECUTABLES = $(INSTALL)
-INSTALL_FILES = $(INSTALL) -p -oroot -groot -m644
-
 build: build-stamp
 
 build-stamp:
@@ -30,14 +26,11 @@ clean:
 install: build
 	dh_testdir
 	dh_testroot
-	dh_installdirs usr/share/kantan/boot/ usr/share/kantan/debs/ \
-	  usr/share/kantan/scripts/ usr/share/kantan/netboot \
-	  usr/sbin etc/kantan/
+	dh_installdirs usr/share/kantan/scripts/ usr/sbin
 
-	$(INSTALL_FILES)       config/*         debian/kantan/etc/kantan/
-	$(INSTALL_FILES)       scripts/*        debian/kantan/usr/share/kantan/scripts/
-	$(INSTALL_FILES)       netboot/*iso     debian/kantan/usr/share/kantan/netboot/
-	$(INSTALL_EXECUTABLES) sbin/kantan debian/kantan/usr/sbin/
+	cp -a example_profile      debian/kantan/usr/share/kantan/
+	cp -a scripts              debian/kantan/usr/share/kantan/
+	install -m 755 sbin/kantan debian/kantan/usr/sbin/
 
 binary-arch: install
 
