@@ -20,17 +20,22 @@ error() {
   printf "Error: $*\n">&2
 }
 
-bailout() {
+cleanup() {
   set +e
   [ -n "${socat_pid:-}" ] && kill -9 "$socat_pid" &>/dev/null
   [ -n "${http_pid_scripts:-}" ] && kill -9 "$http_pid_scripts" &>/dev/null
   [ -n "${http_pid_debs:-}" ] && kill -9 "$http_pid_debs"  &>/dev/null
   [ -n "${kvm_pid:-}" ] && kill -9 "$kvm_pid" &>/dev/null
   [ -n "${vde_pid:-}" ] && kill -9 "$vde_pid" &>/dev/null
-  [ -d "${tmpfile:-}" ] && rm -f "$tmpfile"
+  [ -f "${tmpfile:-}" ] && rm -f "$tmpfile"
   if [ "$TYPE" == "server" ] ; then
-    [ -d /tmp/kantan_share/${PROFILE_DIRECTORY} ] && rm -rf /tmp/kantan_share/${PROFILE_DIRECTORY}
+    rm -rf /tmp/kantan_share/$(dirname ${PROFILE_DIRECTORY})
+    rmdir /tmp/kantan_share 2>/dev/null
   fi
+}
+
+bailout() {
+  cleanup
   [ -n "${1:-}" ] && exit "$1" || exit 1
 }
 
@@ -223,6 +228,7 @@ terminate_check() {
     if grep -q "${KANTAN_TERMINATE_SECRECT}" ${tmpfile:-} ; then
       info "Termination string ${KANTAN_TERMINATE_SECRECT} found, terminating KVM..."
       terminate=true
+      cleanup
       kill ${1:-} $$
     fi
     sleep 5
