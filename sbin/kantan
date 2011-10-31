@@ -154,6 +154,8 @@ server_execution() {
       -append "${KVMSERVER_APPEND} ${ADDITIONAL_KVMSERVER_ARGS:-}" -vnc :0 ${KVM_ARGS:-} &
   kvm_pid="$!"
 
+  terminate_check $kvm_pid &
+
   console
 }
 
@@ -199,7 +201,32 @@ client_execution() {
   $KVM_CMDLINE &
   kvm_pid="$!"
 
+  terminate_check $kvm_pid &
+
   console
+}
+
+terminate_check() {
+  if [ -n "${KANTAN_TERMINATE_SECRECT:-}" ] ; then
+    info "Termination secret $KANTAN_TERMINATE_SECRECT enabled, awaiting string."
+  else
+    return 0
+  fi
+
+  if ! [ -r "${tmpfile:-}" ] ; then
+    error "Could not read ${tmpfile:-}"
+    return 1
+  fi
+
+  terminate=false
+  while ! $terminate ; do
+    if grep -q "${KANTAN_TERMINATE_SECRECT}" ${tmpfile:-} ; then
+      info "Termination string ${KANTAN_TERMINATE_SECRECT} found, terminating KVM..."
+      terminate=true
+      kill ${1:-} $$
+    fi
+    sleep 5
+  done
 }
 
 # simple console prompt
