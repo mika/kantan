@@ -13,6 +13,7 @@ PN=$(basename $0)
 VERSION="$(dpkg --list ${PN} 2>/dev/null| awk '/^i/ {print $3}')"
 [ -n "${VERSION:-}" ] || VERSION="unknown"
 CLIENTNAME="default"
+NO_CONSOLE=false
 # }}}
 
 # helper functions {{{
@@ -53,7 +54,7 @@ usage() {
 
 Usage: --profile <profile_directory> --type [server|client] \\
        --disk <disk.img> [ --iso <grml.iso>] [--bootdir <directory>] \\
-       [--name <name>] [--kvm <kvm_arguments>]
+       [--name <name>] [--kvm <kvm_arguments>] [--no-console]
 
 Mandatory options:
 
@@ -72,6 +73,7 @@ Further options:
    --help               usage instructions (this dialog)
    --kvm  <option>      provide <option> to kvm command line
    --name <clientname>  use clientname.cfg from profile directory (client only)
+   --no-console         do not use interactive console
    --verbose            be more verbose about execution
    --version            display program version and exit
 
@@ -198,7 +200,11 @@ server_execution() {
   terminate_check $kvm_pid &
   terminate_pid="$!"
 
-  console
+  if $NO_CONSOLE ; then
+    exec $$ >/dev/null 2>&1
+  else
+    console
+  fi
 }
 # }}}
 
@@ -246,7 +252,11 @@ ${KVM_CDROM:-} -hda ${DISK} ${KVM_ARGUMENTS:-} -vnc none" # -boot once=d
   terminate_check $kvm_pid &
   terminate_pid="$!"
 
-  console
+  if $NO_CONSOLE ; then
+    exec $$ >/dev/null 2>&1
+  else
+    console
+  fi
 }
 # }}}
 
@@ -272,7 +282,7 @@ terminate_check() {
       terminate=true
       echo "terminated using ${KANTAN_TERMINATE_SECRECT} on $(date)" > $PROFILE_DIRECTORY/termination_status.txt
       cleanup
-      kill ${1:-} $$
+      kill ${1:-} $$ 2>/dev/null
     fi
     sleep 5
   done
@@ -328,7 +338,7 @@ console() {
 
 # cmdline parsing {{{
 _options=$(getopt --name kantan -o +b:d:i:k:n:p:t:hv --long \
-  bootdir:,disk:,iso:,kvm:,name:,profile:,type:,help,verbose,version -- "$@")
+  bootdir:,disk:,iso:,kvm:,name:,profile:,type:,help,no-console,verbose,version -- "$@")
 
 [ "$?" -ne 0 ] && { usage ; bailout ; }
 [ -z "${1:-}" ] && { usage ; bailout ; }
@@ -351,6 +361,9 @@ while :; do
       ;;
     --name|-n)
       shift ; CLIENTNAME="${1}"
+      ;;
+    --no-console)
+      NO_CONSOLE=true
       ;;
     --profile|-p)
       shift ; PROFILE_DIRECTORY="${1}"
