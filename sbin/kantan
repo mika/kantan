@@ -51,18 +51,40 @@ bailout() {
 usage() {
  printf "${PN} ${VERSION} - test suite for autotesting software using Grml + KVM
 
- Usage:
+Usage: --profile <profile_directory> --type [server|client] \\
+       --disk <disk.img> [ --iso <grml.iso>] [--bootdir <directory>] \\
+       [--name <name>] [--kvm <kvm_arguments>]
 
-   ${PN} --profile <profile_directory> --type server --disk <disk.img> \
-         --iso <grml.iso> --bootdir </mnt/point/of/iso/>
+Mandatory options:
 
-     or
+   --disk    <disk.img>    use disk.img as virtual hard disk
+   --profile <directory>   use configuration from specified directory
+   --type [server|client]  run in server or client mode
 
-   ${PN} --profile <profile_directory> --type client --disk <disk.img> \
-         [--name <name>] [--kvm <kvm_arguments>]
+Mandatory options for server mode:
 
-   ${PN} --help      -- display usage instructions (this screen)
-   ${PN} --version   -- display version information and exit
+   --iso     <grml.iso>    use specified grml.iso for booting
+   --bootdir <directory>   use kernel (linux26) + initrd (initrd.gz) from
+                           specified directory
+
+Further options:
+
+   --help               usage instructions (this dialog)
+   --kvm  <option>      provide <option> to kvm command line
+   --name <clientname>  use clientname.cfg from profile directory (client only)
+   --verbose            be more verbose about execution
+   --version            display program version and exit
+
+Usage example for server:
+
+   ${PN} --profile /usr/share/kantan/example_profile --type server \\
+         --disk /srv/images/fai.img --iso /srv/grml_2011.10.27.iso \\
+         --bootdir /mnt/kantan
+
+Usage example for client:
+
+   ${PN} --profile /usr/share/kantan/example_profile --type client \\
+         --disk /srv/images/fai-client.img --kvm '-boot n'
 
 Copyright (c) 2011, Michael Prokop <mika@grml.org>
 "
@@ -305,7 +327,8 @@ console() {
 _options=$(getopt --name kantan -o +b:d:i:k:n:p:t:hv --long \
   bootdir:,disk:,iso:,kvm:,name:,profile:,type:,help,verbose,version -- "$@")
 
-[ $? -ne 0 ] && { usage ; bailout ; }
+[ "$?" -ne 0 ] && { usage ; bailout ; }
+[ -z "${1:-}" ] && { usage ; bailout ; }
 
 eval set -- "$_options"
 
