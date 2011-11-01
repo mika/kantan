@@ -252,6 +252,8 @@ ${KVM_CDROM:-} -hda ${DISK} ${KVM_ARGUMENTS:-} -vnc none" # -boot once=d
 
 # termination secret {{{
 terminate_check() {
+  rm -f ${PROFILE_DIRECTORY}/termination_status.txt
+
   if [ -n "${KANTAN_TERMINATE_SECRECT:-}" ] ; then
     info "Termination secret $KANTAN_TERMINATE_SECRECT enabled, awaiting string."
   else
@@ -268,6 +270,7 @@ terminate_check() {
     if grep -q "${KANTAN_TERMINATE_SECRECT}" ${tmpfile:-} ; then
       info "Termination string ${KANTAN_TERMINATE_SECRECT} found, terminating KVM..."
       terminate=true
+      echo "terminated using ${KANTAN_TERMINATE_SECRECT} on $(date)" > $PROFILE_DIRECTORY/termination_status.txt
       cleanup
       kill ${1:-} $$
     fi
