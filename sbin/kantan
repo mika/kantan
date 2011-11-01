@@ -200,7 +200,7 @@ client_execution() {
     CLIENT_ISO="${PROFILE_DIRECTORY}/ipxe.iso"
   fi
 
-  if ! [ -r "${CLIENT_ARGS:-}" ] ; then
+  if ! [ -r "${CLIENT_ISO}" ] ; then
     error "Client ISO $CLIENT_ISO can not be read."
     bailout
   fi
