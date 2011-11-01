@@ -12,6 +12,7 @@ set -u
 PN=$(basename $0)
 VERSION="$(dpkg --list ${PN} 2>/dev/null| awk '/^i/ {print $3}')"
 [ -n "${VERSION:-}" ] || VERSION="unknown"
+CLIENTNAME="default"
 # }}}
 
 # helper functions {{{
@@ -178,7 +179,7 @@ server_execution() {
 client_execution() {
   VDE_SWITCH="${PROFILE_DIRECTORY}/vde_switch"
 
-  monitorfile="${PROFILE_DIRECTORY}/kvm_client.monitor"
+  monitorfile="${PROFILE_DIRECTORY}/kvm_client_${CLIENTNAME}.monitor"
 
   if [ -n "$CLIENTNAME" ] ; then
     if [ -r "${PROFILE_DIRECTORY}/${CLIENTNAME}.cfg" ] ; then
