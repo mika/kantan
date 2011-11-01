@@ -368,6 +368,13 @@ if [ -z "${DISK:-}" ] ; then
   error "harddisk option is unset, --disk is mandatory." ; bailout
 fi
 
+if ! [ -r "${DISK:-}" ] ; then
+  error "harddisk $DISK could not be found."
+  echo  "NOTE: to create it execute e.g.:
+  qemu-img create $DISK 3G"
+  bailout
+fi
+
 if [ -z "${BOOT_DIR:-}" ] ; then
   error "bootdir option is unset, --bootdir is mandatory." ; bailout
 fi
