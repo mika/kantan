@@ -8,6 +8,13 @@
 
 set -u
 
+# global settings {{{
+PN=$(basename $0)
+VERSION="$(dpkg --list ${PN} 2>/dev/null| awk '/^i/ {print $3}')"
+[ -n "${VERSION:-}" ] || VERSION="unknown"
+# }}}
+
+# helper functions {{{
 info() {
   printf "Info: $*\n"
 }
@@ -27,8 +34,9 @@ cleanup() {
   [ -n "${http_pid_debs:-}" ] && kill -9 "$http_pid_debs"  &>/dev/null
   [ -n "${kvm_pid:-}" ] && kill -9 "$kvm_pid" &>/dev/null
   [ -n "${vde_pid:-}" ] && kill -9 "$vde_pid" &>/dev/null
+  [ -n "${terminate_pid:-}" ] && kill -9 "$terminate_pid" &>/dev/null
   [ -f "${tmpfile:-}" ] && rm -f "$tmpfile"
-  if [ "$TYPE" == "server" ] ; then
+  if [ "${TYPE:-}" == "server" ] ; then
     rm -rf /tmp/kantan_share/$(dirname ${PROFILE_DIRECTORY})
     rmdir /tmp/kantan_share 2>/dev/null
   fi
@@ -39,46 +47,43 @@ bailout() {
   [ -n "${1:-}" ] && exit "$1" || exit 1
 }
 
-trap bailout 1 2 3 3 6 9 14 15
-
 usage() {
- printf "$0 - simple test suite for autotesting software using Grml + KVM
+ printf "${PN} ${VERSION} - test suite for autotesting software using Grml + KVM
 
  Usage:
 
-   $0 server <profile_directory> <disk.img> <grml.iso> </mnt/point/of/iso/>
+   ${PN} --profile <profile_directory> --type server --disk <disk.img> \
+         --iso <grml.iso> --bootdir </mnt/point/of/iso/>
 
      or
 
-   $0 client <profile_directory> <disk.img> [<name>] [kvm_arguments]
+   ${PN} --profile <profile_directory> --type client --disk <disk.img> \
+         [--name <name>] [--kvm <kvm_arguments>]
 
-   $0 help   -- display usage instructions (this screen)
-   $0 server -- start main KVM instance
-   $0 client -- start client KVM instance
+   ${PN} --help      -- display usage instructions (this screen)
+   ${PN} --version   -- display version information and exit
 
 Copyright (c) 2011, Michael Prokop <mika@grml.org>
 "
 }
+# }}}
 
-if [[ "${1:-}" == "help" ]] || [[ "${1:-}" == "--help" ]] || [[ -z "${1:-}" ]] ; then
-  usage
-  exit 0
-fi
+trap bailout 1 2 3 3 6 9 14 15
 
-# server handling
+# server handling {{{
 server_execution() {
   VDE_SWITCH="/tmp/kantan_share/${PROFILE_DIRECTORY}/vde_switch"
   mkdir -p "$VDE_SWITCH"
 
   # checks
-  if ! [ -d "${ISO_DIR}/boot" ] ; then
-    error "Error: no directory /boot found on $ISO_DIR (forgot to mount ISO?)"
-    exit 1
+  if ! [ -d "${BOOT_DIR}" ] ; then
+    error "boot directory $BOOT_DIR does not exist"
+    bailout
   fi
 
   if ! [ -d "${PROFILE_DIRECTORY}/share/" ] ; then
-    error "Error: ${PROFILE_DIRECTORY}/share/ not found."
-    exit 1
+    error "${PROFILE_DIRECTORY}/share/ not found."
+    bailout
   fi
 
   . "${PROFILE_DIRECTORY}/server.cfg"
@@ -89,17 +94,17 @@ server_execution() {
   vde_switch -s ${VDE_SWITCH} &
   vde_pid="$!"
 
-  KERNEL=$(find ${ISO_DIR}/boot -name linux26 -print0)
-  INITRD=$(find ${ISO_DIR}/boot -name initrd.gz -print0)
+  KERNEL=$(find ${BOOT_DIR} -name linux26 -print0)
+  INITRD=$(find ${BOOT_DIR} -name initrd.gz -print0)
 
   if [ -z "${KERNEL:-}" ] ; then
-    error "Error: no kernel file linux26 found on $ISO_DIR" >&2
-    exit 1
+    error "no kernel file linux26 found inside $BOOT_DIR" >&2
+    bailout
   fi
 
   if [ -z "${INITRD:-}" ] ; then
-    error "Error: no initrd file initrd.gz found on $ISO_DIR" >&2
-    exit 1
+    error "no initrd file initrd.gz found inside $BOOT_DIR" >&2
+    bailout
   fi
 
   info "Starting up kvm server instance"
@@ -125,7 +130,7 @@ server_execution() {
 
     if ! which dpkg-scanpackages &>/dev/null ; then
       error "dpkg-scanpackages not available, please install package dpkg-dev."
-      exit 1
+      bailout
     fi
 
     dpkg-scanpackages . | gzip > Packages.gz
@@ -155,16 +160,18 @@ server_execution() {
       -net user,vlan=0 \
       -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=1,model=virtio \
       $VLAN1 \
-      -hda "${HDA}" -cdrom "${ISO_FILE}" -kernel "${KERNEL}" -initrd "${INITRD}" \
-      -append "${KVMSERVER_APPEND} ${ADDITIONAL_KVMSERVER_ARGS:-}" -vnc :0 ${KVM_ARGS:-} &
+      -hda "${DISK}" -cdrom "${ISO_FILE}" -kernel "${KERNEL}" -initrd "${INITRD}" \
+      -append "${KVMSERVER_APPEND} ${KVM_ARGUMENTS:-}" -vnc :0 ${KVM_ARGS:-} &
   kvm_pid="$!"
 
   terminate_check $kvm_pid &
+  terminate_pid="$!"
 
   console
 }
+# }}}
 
-# client handling
+# client handling {{{
 client_execution() {
   VDE_SWITCH="/tmp/kantan_share/${PROFILE_DIRECTORY}/vde_switch"
 
@@ -178,9 +185,9 @@ client_execution() {
   fi
 
   if ! [ -r ${VDE_SWITCH} ] ; then
-    error "Error retreiving vde_switch socket ${VDE_SWITCH}"
+    error "could not retrive vde_switch socket ${VDE_SWITCH}"
     error "Server process not running yet?"
-    exit 1
+    bailout
   fi
 
   # default if unset
@@ -190,14 +197,14 @@ client_execution() {
 
   if ! [ -r "${CLIENT_ARGS:-}" ] ; then
     error "Client ISO $CLIENT_ISO can not be read."
-    exit 1
+    bailout
   fi
 
   if [ -z "${KVM_CMDLINE:-}" ] ; then
     KVM_CMDLINE="kvm -k en-us -m ${CLIENT_MEMORY:-512} \
 -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=1,model=virtio \
 -net vde,sock=${VDE_SWITCH},vlan=1 \
--cdrom ${CLIENT_ISO} -hda ${HDA} ${CLIENT_ARGS:-}" # -boot once=d
+-cdrom ${CLIENT_ISO} -hda ${DISK} ${KVM_ARGUMENTS:-}" # -boot once=d
   fi
 
   printf "Invoking KVM using the following cmdline:\n
@@ -207,10 +214,13 @@ client_execution() {
   kvm_pid="$!"
 
   terminate_check $kvm_pid &
+  terminate_pid="$!"
 
   console
 }
+# }}}
 
+# termination secret {{{
 terminate_check() {
   if [ -n "${KANTAN_TERMINATE_SECRECT:-}" ] ; then
     info "Termination secret $KANTAN_TERMINATE_SECRECT enabled, awaiting string."
@@ -234,8 +244,9 @@ terminate_check() {
     sleep 5
   done
 }
+# }}}
 
-# simple console prompt
+# simple console prompt {{{
 console() {
   sleep 2
   printf "\nEnter control command: [help|data|quit|pause|cont]\nprompt\$ "
@@ -280,54 +291,95 @@ console() {
     esac
   done
 }
+# }}}
 
-# main execution
-PROFILE_DIRECTORY="${1:-}"
-TYPE="${2:-}"
-HDA="${3:-}"
+# cmdline parsing {{{
+_options=$(getopt --name kantan -o +b:d:i:k:n:p:t:hv --long \
+  bootdir:,disk:,iso:,kvm:,name:,profile:,type:,help,verbose,version -- "$@")
 
-if ! [ -d "$PROFILE_DIRECTORY" ] ; then
-  error "Error: profile directory $PROFILE_DIRECTORY does not exist."
-  exit 1
+[ $? -ne 0 ] && { usage ; bailout ; }
+
+eval set -- "$_options"
+
+while :; do
+  case "${1:-}" in
+    --bootdir|-b)
+      shift ; BOOT_DIR="${1}"
+      ;;
+    --disk|-d)
+      shift ; DISK="${1}"
+      ;;
+    --iso|-i)
+      shift ; ISO_FILE="${1}"
+      ;;
+    --kvm|-k)
+      shift ; KVM_ARGUMENTS="${1}"
+      ;;
+    --name|-n)
+      shift ; CLIENTNAME="${1}"
+      ;;
+    --profile|-p)
+      shift ; PROFILE_DIRECTORY="${1}"
+      ;;
+    --type|-t)
+      shift ; TYPE="${1}"
+      ;;
+    --verbose)
+      if [ "${DEBUG:-}" ]; then
+        DEBUG=$(expr $DEBUG + 1)
+      else
+        DEBUG=1;
+      fi
+      ;;
+    --help|-h)
+      usage ; exit 0
+      ;;
+    --version|-v)
+      echo "${PN}, version ${VERSION}" ; bailout 0
+      ;;
+    --)
+      shift; break
+      ;;
+    *)
+      error "internal getopt error."
+      bailout
+      ;;
+  esac
+  shift
+done
+# }}}
+
+# execution checks {{{
+if [ -z "${PROFILE_DIRECTORY:-}" ] ; then
+  error "profile option is unset, --profile is mandatory." ; bailout
 fi
 
-if [[ "${2:-}" == "server" ]] ; then
-  # check args
-  if [[ -z "${5:-}" ]] ; then
-    usage
-    exit 1
-  fi
-
-  ISO_FILE="${4:-}"
-  ISO_DIR="${5:-}"
-
-  if [ -n "${6:-}" ] ; then
-    ADDITIONAL_KVMSERVER_ARGS="$5"
-  fi
-
-  server_execution
-
-elif [[ "${2:-}" == "client" ]] ; then
-  # check args
-  if [[ -z "${3:-}" ]] ; then
-    usage
-    exit 1
-  fi
-
-  if [ -n "${4:-}" ] ; then
-    CLIENTNAME="${4:-}"
-  fi
-
-  if [ -n "${5:-}" ] ; then
-    CLIENT_ARGS="$5"
-  fi
-
-  client_execution
-else
-  error "Error: Unsupported argument '${1}' - exiting."
-  exit 1
+if [ -z "${TYPE:-}" ] ; then
+  error "executionttype option is unset, --type is mandatory." ; bailout
 fi
+
+if [ -z "${DISK:-}" ] ; then
+  error "harddisk option is unset, --disk is mandatory." ; bailout
+fi
+
+if [ -z "${BOOT_DIR:-}" ] ; then
+  error "bootdir option is unset, --bootdir is mandatory." ; bailout
+fi
+
+if ! [ -d "${PROFILE_DIRECTORY:-}" ] ; then
+  error "profile directory $PROFILE_DIRECTORY does not exist." ; bailout
+fi
+# }}}
+
+# main execution {{{
+case "$TYPE" in
+  server) server_execution ;;
+  client) client_execution;;
+       *) error "unsupported --type argument, exiting." ; bailout ;;
+esac
 
 bailout 0
+# }}}
 
 ## END OF FILE #################################################################
+# vim: ai tw=100 expandtab foldmethod=marker shiftwidth=2
