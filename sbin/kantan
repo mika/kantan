@@ -115,9 +115,9 @@ server_execution() {
   fi
 
   info "Starting up kvm server instance"
-  info "Connect via VNC: 'vncviewer localhost'"
   info "Connect via serial console: 'sudo screen -m /dev/pts/\$ID 115200 || cu -l /dev/pts/\$ID'"
-  info "Connect to kvm monitor: socat - UNIX-CONNECT:${monitorfile}"
+  info "Connect to monitor console: 'socat - UNIX-CONNECT:${monitorfile}'"
+  info "Enable VNC via: 'echo change vnc :0 | socat - UNIX-CONNECT:${monitorfile}'"
   info "Stop execution via entering 'quit'"
 
   tmpfile=$(mktemp)
@@ -170,7 +170,7 @@ server_execution() {
       -monitor unix:${monitorfile},server,nowait \
       $VLAN1 \
       -hda "${DISK}" -cdrom "${ISO_FILE}" -kernel "${KERNEL}" -initrd "${INITRD}" \
-      -append "${KVMSERVER_APPEND} ${KVM_ARGUMENTS:-}" -vnc :0 ${KVM_ARGS:-} &
+      -append "${KVMSERVER_APPEND} ${KVM_ARGUMENTS:-}" -vnc none ${KVM_ARGS:-} &
   kvm_pid="$!"
 
   terminate_check $kvm_pid &
@@ -211,12 +211,14 @@ client_execution() {
     bailout
   fi
 
+  info "Enable VNC via: 'echo change vnc :1 | socat - UNIX-CONNECT:${monitorfile}'"
+
   if [ -z "${KVM_CMDLINE:-}" ] ; then
-    KVM_CMDLINE="kvm -k en-us -m ${CLIENT_MEMORY:-512} \
+    KVM_CMDLINE="kvm -k en-us -m ${CLIENT_MEMORY:-512} -serial pty \
 -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=1,model=virtio \
 -net vde,sock=${VDE_SWITCH},vlan=1 \
 -monitor unix:${monitorfile},server,nowait \
--cdrom ${CLIENT_ISO} -hda ${DISK} ${KVM_ARGUMENTS:-}" # -boot once=d
+-cdrom ${CLIENT_ISO} -hda ${DISK} ${KVM_ARGUMENTS:-} -vnc none" # -boot once=d
   fi
 
   printf "Invoking KVM using the following cmdline:\n
