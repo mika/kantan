@@ -32,11 +32,3 @@ License: GPL-2+
      On Debian systems, the full text of the GNU General Public
      License version 2 can be found in the file
      `/usr/share/common-licenses/GPL-2'.
-
-Files: netboot/ipxe.iso
-Copyright: Copyright (C) ipxe project
-License: GPL-2
-Notes: the ISO has been taken from /usr/lib/ipxe/ipxe.iso of
-       Debian's ipxe package version 1.0.0+git-1.293e34-2
-       For details regarding licensing see
-       http://git.debian.org/?p=users/waldi/ipxe.git;a=blob;f=debian/copyright;hb=HEAD

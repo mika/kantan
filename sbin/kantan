@@ -201,24 +201,18 @@ client_execution() {
     bailout
   fi
 
-  # default if unset
-  if [ -z "${CLIENT_ISO:-}" ] ; then
-    CLIENT_ISO="${PROFILE_DIRECTORY}/ipxe.iso"
-  fi
-
-  if ! [ -r "${CLIENT_ISO}" ] ; then
-    error "Client ISO $CLIENT_ISO can not be read."
-    bailout
-  fi
-
   info "Enable VNC via: 'echo change vnc :1 | socat - UNIX-CONNECT:${monitorfile}'"
+
+  if [ -n "${ISO_FILE:-}" -a -r "${ISO_FILE:-}" ] ; then
+    KVM_CDROM="-cdrom ${ISO_FILE}"
+  fi
 
   if [ -z "${KVM_CMDLINE:-}" ] ; then
     KVM_CMDLINE="kvm -k en-us -m ${CLIENT_MEMORY:-512} -serial pty \
 -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=1,model=virtio \
 -net vde,sock=${VDE_SWITCH},vlan=1 \
 -monitor unix:${monitorfile},server,nowait \
--cdrom ${CLIENT_ISO} -hda ${DISK} ${KVM_ARGUMENTS:-} -vnc none" # -boot once=d
+${KVM_CDROM:-} -hda ${DISK} ${KVM_ARGUMENTS:-} -vnc none" # -boot once=d
   fi
 
   printf "Invoking KVM using the following cmdline:\n
