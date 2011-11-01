@@ -188,7 +188,7 @@ EOF
   # required so dhclient doesn't listen on eth1 anymore
   ifdown eth1
   # be 100% sure :-/
-  kill -9 $(pgrep -f dhclient.eth1)
+  kill -9 $(pgrep -f dhclient.eth1) || true
 
   /etc/init.d/networking restart
 
