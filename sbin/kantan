@@ -121,7 +121,7 @@ server_execution() {
   info "Stop execution via entering 'quit'"
 
   tmpfile=$(mktemp)
-  socat -u TCP4-LISTEN:8888,reuseaddr,fork - > "${tmpfile}" &
+  socat -u TCP-LISTEN:8888,reuseaddr,fork - > "${tmpfile}" &
   socat_pid="$!"
 
   info "Serving ${PROFILE_DIRECTORY}/share/ to port 8000 for netscript bootoption."
