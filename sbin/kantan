@@ -253,7 +253,7 @@ client_execution() {
   fi
 
   if [ -z "${KVM_CMDLINE:-}" ] ; then
-    KVM_CMDLINE="kvm -k en-us -m ${CLIENT_MEMORY:-512} -serial pty \
+    KVM_CMDLINE="kvm -k en-us -m ${MEMORY:-512} -serial pty \
 -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=1,model=virtio \
 -net vde,sock=${VDE_SWITCH},vlan=1 \
 -monitor unix:${monitorfile},server,nowait \
