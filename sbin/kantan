@@ -127,6 +127,11 @@ server_execution() {
     bailout
   fi
 
+  if ! [ -r "${ISO_FILE:-}" ] ; then
+    error "iso file $ISO_FILE could not be read."
+    bailout
+  fi
+
   if [ -z "$VM_NAME" ] ; then
     if ! [ -r "${PROFILE_DIRECTORY}/server.cfg" ] ; then
       warn "Configuration file ${PROFILE_DIRECTORY}/server.cfg could be not read, using defaults."
