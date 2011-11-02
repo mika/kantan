@@ -13,6 +13,7 @@ PN=$(basename $0)
 VERSION="$(dpkg --list ${PN} 2>/dev/null| awk '/^i/ {print $3}')"
 [ -n "${VERSION:-}" ] || VERSION="unknown"
 NO_CONSOLE=false
+DEBUG=0
 # }}}
 
 # helper functions {{{
@@ -26,6 +27,12 @@ warn() {
 
 error() {
   printf "Error: $*\n">&2
+}
+
+debug() {
+  if [ $DEBUG -gt 0 ] ; then
+    printf "Debug: $*\n"
+  fi
 }
 
 cleanup() {
@@ -209,8 +216,13 @@ server_execution() {
       -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=1,model=virtio \
       -monitor unix:${monitorfile},server,nowait \
       $VLAN1 \
-      -hda "${DISK}" -cdrom "${ISO_FILE}" -kernel "${KERNEL}" -initrd "${INITRD}" \
-      -append "${KERNEL_CMDLINE} ${KERNEL_APPEND:-}" -vnc none ${KVM_ARGS:-} &
+      -hda ${DISK} -cdrom ${ISO_FILE} -kernel ${KERNEL} -initrd ${INITRD} -vnc none"
+
+  debug "Invoking KVM using the following cmdline:\n
+  $KVM_CMDLINE -append ${KERNEL_CMDLINE} ${KERNEL_APPEND:-} ${KVM_ARGS:-}\n"
+
+  info "Starting KVM instance"
+  $KVM_CMDLINE -append "${KERNEL_CMDLINE} ${KERNEL_APPEND:-}" ${KVM_ARGS:-} &
   kvm_pid="$!"
 
   terminate_check $kvm_pid &
@@ -249,20 +261,19 @@ client_execution() {
   info "Enable VNC via: 'echo change vnc :1 | socat - UNIX-CONNECT:${monitorfile}'"
 
   if [ -n "${ISO_FILE:-}" -a -r "${ISO_FILE:-}" ] ; then
+    info "Using $ISO_FILE as cdrom file."
     KVM_CDROM="-cdrom ${ISO_FILE}"
   fi
 
-  if [ -z "${KVM_CMDLINE:-}" ] ; then
-    KVM_CMDLINE="kvm -k en-us -m ${MEMORY:-512} -serial pty \
+  KVM_CMDLINE="kvm -k en-us -m ${MEMORY:-512} -serial pty \
 -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=1,model=virtio \
 -net vde,sock=${VDE_SWITCH},vlan=1 \
 -monitor unix:${monitorfile},server,nowait \
-${KVM_CDROM:-} -hda ${DISK} ${KVM_ARGS:-} -vnc none" # -boot once=d
-  fi
+${KVM_CDROM:-} -hda ${DISK} ${KVM_ARGS:-} -vnc none"
 
-  printf "Invoking KVM using the following cmdline:\n
-  $KVM_CMDLINE\n"
+  debug "Invoking KVM using the following cmdline:\n\n  $KVM_CMDLINE\n"
 
+  info "Starting KVM instance"
   $KVM_CMDLINE &
   kvm_pid="$!"
 
