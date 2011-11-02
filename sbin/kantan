@@ -132,7 +132,7 @@ server_execution() {
     bailout
   fi
 
-  if [ -z "$VM_NAME" ] ; then
+  if [ -z "${VM_NAME:-}" ] ; then
     if ! [ -r "${PROFILE_DIRECTORY}/server.cfg" ] ; then
       warn "Configuration file ${PROFILE_DIRECTORY}/server.cfg could be not read, using defaults."
     else
@@ -247,12 +247,19 @@ client_execution() {
 
   monitorfile="${PROFILE_DIRECTORY}/kvm_client_${VM_NAME}.monitor"
 
-  if [ -n "$VM_NAME" ] ; then
+  if [ -z "${VM_NAME:-}" ] ; then
+    if ! [ -r "${PROFILE_DIRECTORY}/client.cfg" ] ; then
+      warn "Configuration file ${PROFILE_DIRECTORY}/client.cfg could be not read, using defaults."
+    else
+      info "Reading configuration file ${PROFILE_DIRECTORY}/client.cfg"
+      . "${PROFILE_DIRECTORY}/client.cfg"
+    fi
+  else
     if [ -r "${PROFILE_DIRECTORY}/${VM_NAME}.cfg" ] ; then
       info "Reading configuration file ${PROFILE_DIRECTORY}/${VM_NAME}.cfg"
       . "${PROFILE_DIRECTORY}/${VM_NAME}.cfg"
     else
-      error "Configuration file ${PROFILE_DIRECTORY}/${VM_NAME}.cfg could be not found."
+      error "Configuration file ${PROFILE_DIRECTORY}/${VM_NAME}.cfg could be not read."
       bailout
     fi
   fi
