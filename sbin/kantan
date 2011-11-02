@@ -12,7 +12,6 @@ set -u
 PN=$(basename $0)
 VERSION="$(dpkg --list ${PN} 2>/dev/null| awk '/^i/ {print $3}')"
 [ -n "${VERSION:-}" ] || VERSION="unknown"
-CLIENTNAME="default"
 NO_CONSOLE=false
 # }}}
 
@@ -54,7 +53,8 @@ usage() {
 
 Usage: --profile <profile_directory> --type [server|client] \\
        --disk <disk.img> [ --iso <grml.iso>] [--bootdir <directory>] \\
-       [--name <name>] [--kvm <kvm_arguments>] [--no-console]
+       [--name <name>] [--kvm <kvm_arguments>] [--no-console] \\
+       [--kernelappend <arg>] [--kernelcmdline <arg>]
 
 Mandatory options:
 
@@ -70,12 +70,14 @@ Mandatory options for server mode:
 
 Further options:
 
-   --help               usage instructions (this dialog)
-   --kvm  <option>      provide <option> to kvm command line
-   --name <clientname>  use clientname.cfg from profile directory (client only)
-   --no-console         do not use interactive console
-   --verbose            be more verbose about execution
-   --version            display program version and exit
+   --help                 usage instructions (this dialog)
+   --kernelappend  <arg>  append <arg> to default kernelcmdline (server only)
+   --kernelcmdline <arg>  use <arg> as default kernelcmdline (server only)
+   --kvm  <option>        provide <option> to kvm command line
+   --name <vmname>        read vmname.cfg from profile directory
+   --no-console           do not use interactive console
+   --verbose              be more verbose about execution
+   --version              display program version and exit
 
 Usage example for server:
 
@@ -118,7 +120,22 @@ server_execution() {
     bailout
   fi
 
-  . "${PROFILE_DIRECTORY}/server.cfg"
+  if [ -z "$VM_NAME" ] ; then
+    if ! [ -r "${PROFILE_DIRECTORY}/server.cfg" ] ; then
+      warn "Configuration file ${PROFILE_DIRECTORY}/server.cfg could be not read, using defaults."
+    else
+      info "Reading configuration file ${PROFILE_DIRECTORY}/server.cfg"
+      . "${PROFILE_DIRECTORY}/server.cfg"
+    fi
+  else
+    if [ -r "${PROFILE_DIRECTORY}/${VM_NAME}.cfg" ] ; then
+      info "Reading configuration file ${PROFILE_DIRECTORY}/${VM_NAME}.cfg"
+      . "${PROFILE_DIRECTORY}/${VM_NAME}.cfg"
+    else
+      error "Configuration file ${PROFILE_DIRECTORY}/${VM_NAME}.cfg could be not read."
+      bailout
+    fi
+  fi
 
   current_working_dir=$(pwd)
 
@@ -182,19 +199,18 @@ server_execution() {
     VLAN1="-net tap,vlan=1,ifname=$VLAN1_DEVICE"
   fi
 
-  if [ -z "${KVMSERVER_APPEND:-}" ] ; then
-    KVMSERVER_APPEND="boot=live ignore_bootid noquickconfig netscript=http://10.0.2.2:8000/netscript.sh console=tty1 console=ttyS0"
+  if [ -z "${KERNEL_CMDLINE:-}" ] ; then
+    KERNEL_CMDLINE="boot=live ignore_bootid noquickconfig netscript=http://10.0.2.2:8000/netscript.sh console=tty1 console=ttyS0"
   fi
 
-  info "Starting KVM instance"
-  kvm -k en-us -m "${MEMORY:-1024}" -serial pty \
+  KVM_CMDLINE="kvm -k en-us -m ${MEMORY:-1024}  -serial pty \
       -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=0,model=virtio \
       -net user,vlan=0 \
       -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=1,model=virtio \
       -monitor unix:${monitorfile},server,nowait \
       $VLAN1 \
       -hda "${DISK}" -cdrom "${ISO_FILE}" -kernel "${KERNEL}" -initrd "${INITRD}" \
-      -append "${KVMSERVER_APPEND} ${KVM_ARGUMENTS:-}" -vnc none ${KVM_ARGS:-} &
+      -append "${KERNEL_CMDLINE} ${KERNEL_APPEND:-}" -vnc none ${KVM_ARGS:-} &
   kvm_pid="$!"
 
   terminate_check $kvm_pid &
@@ -212,14 +228,15 @@ server_execution() {
 client_execution() {
   VDE_SWITCH="${PROFILE_DIRECTORY}/vde_switch"
 
-  monitorfile="${PROFILE_DIRECTORY}/kvm_client_${CLIENTNAME}.monitor"
+  monitorfile="${PROFILE_DIRECTORY}/kvm_client_${VM_NAME}.monitor"
 
-  if [ -n "$CLIENTNAME" ] ; then
-    if [ -r "${PROFILE_DIRECTORY}/${CLIENTNAME}.cfg" ] ; then
-      info "Reading configuration file ${PROFILE_DIRECTORY}/${CLIENTNAME}.cfg"
-      . "${PROFILE_DIRECTORY}/${CLIENTNAME}.cfg"
+  if [ -n "$VM_NAME" ] ; then
+    if [ -r "${PROFILE_DIRECTORY}/${VM_NAME}.cfg" ] ; then
+      info "Reading configuration file ${PROFILE_DIRECTORY}/${VM_NAME}.cfg"
+      . "${PROFILE_DIRECTORY}/${VM_NAME}.cfg"
     else
-      info "Configuration file ${PROFILE_DIRECTORY}/${CLIENTNAME}.cfg not found, using defaults."
+      error "Configuration file ${PROFILE_DIRECTORY}/${VM_NAME}.cfg could be not found."
+      bailout
     fi
   fi
 
@@ -240,7 +257,7 @@ client_execution() {
 -net nic,macaddr=$(python /usr/share/kantan/scripts/random_mac.py),vlan=1,model=virtio \
 -net vde,sock=${VDE_SWITCH},vlan=1 \
 -monitor unix:${monitorfile},server,nowait \
-${KVM_CDROM:-} -hda ${DISK} ${KVM_ARGUMENTS:-} -vnc none" # -boot once=d
+${KVM_CDROM:-} -hda ${DISK} ${KVM_ARGS:-} -vnc none" # -boot once=d
   fi
 
   printf "Invoking KVM using the following cmdline:\n
@@ -338,7 +355,7 @@ console() {
 
 # cmdline parsing {{{
 _options=$(getopt --name kantan -o +b:d:i:k:n:p:t:hv --long \
-  bootdir:,disk:,iso:,kvm:,name:,profile:,type:,help,no-console,verbose,version -- "$@")
+  bootdir:,disk:,iso:,kernelappend:,kernelcmdline:,kvm:,name:,profile:,type:,help,no-console,verbose,version -- "$@")
 
 [ "$?" -ne 0 ] && { usage ; bailout ; }
 [ -z "${1:-}" ] && { usage ; bailout ; }
@@ -356,11 +373,17 @@ while :; do
     --iso|-i)
       shift ; ISO_FILE="${1}"
       ;;
+    --kernelappend)
+      shift ; KERNEL_APPEND="${1}"
+      ;;
+    --kernelcmdline)
+      shift ; KERNEL_CMDLINE="${1}"
+      ;;
     --kvm|-k)
-      shift ; KVM_ARGUMENTS="${1}"
+      shift ; KVM_ARGS="${1}"
       ;;
     --name|-n)
-      shift ; CLIENTNAME="${1}"
+      shift ; VM_NAME="${1}"
       ;;
     --no-console)
       NO_CONSOLE=true
@@ -410,7 +433,7 @@ if [ -z "${DISK:-}" ] ; then
 fi
 
 if ! [ -r "${DISK:-}" ] ; then
-  error "harddisk $DISK could not be found."
+  error "harddisk $DISK could not be read."
   echo  "NOTE: to create it execute e.g.:
   qemu-img create $DISK 3G"
   bailout
